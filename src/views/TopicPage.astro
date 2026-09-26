@@ -1,0 +1,102 @@
+---
+import { render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import DocumentList from '../components/DocumentList.astro';
+import StatusBadge from '../components/StatusBadge.astro';
+import Timeline from '../components/Timeline.astro';
+import TopicTree from '../components/TopicTree.astro';
+import TranslationNotice from '../components/TranslationNotice.astro';
+import { statusSummary } from '../lib/tree';
+import { STATUSES, type Locale } from '../lib/domain';
+import { assemblyPath, formatDate, t } from '../lib/i18n';
+import {
+  getAncestors,
+  getAssembliesForTopic,
+  getTopic,
+  pickLocale,
+  topicText,
+  topicTitle,
+} from '../lib/content';
+
+interface Props {
+  topicKey: string;
+  locale: Locale;
+}
+const { topicKey, locale } = Astro.props;
+const _ = t(locale);
+
+const topic = await getTopic(topicKey);
+const ancestors = await getAncestors(topicKey);
+const assemblies = await getAssembliesForTopic(topicKey);
+const { entry, missingTranslation } = topicText(topic, locale);
+const { Content } = await render(entry);
+const summary = statusSummary(topic);
+const area = ancestors[0] ?? topic;
+---
+
+<Base locale={locale} title={entry.data.title} description={entry.data.summary}>
+  <Breadcrumbs locale={locale} ancestors={ancestors} current={entry.data.title} />
+
+  <article data-pagefind-body>
+    <h1 data-pagefind-meta="title">{entry.data.title}</h1>
+    <span hidden data-pagefind-filter="area">
+      {topicTitle(area, locale)}
+    </span>
+    {topic.status && (
+      <p>
+        <span data-pagefind-filter="status">
+          <StatusBadge status={topic.status} locale={locale} />
+        </span>{' '}
+        <span class="muted">
+          {_('topic.priority')}: {_(`priority.${topic.data.priority}`)} · {_('topic.updatedAt')}:{' '}
+          {formatDate(topic.updatedAt, locale)}
+        </span>
+      </p>
+    )}
+    <p class="summary">{entry.data.summary}</p>
+    {missingTranslation && <TranslationNotice locale={locale} />}
+    <Content />
+
+    {topic.children.length > 0 && (
+      <section>
+        <h2>{_('topic.subtopics')}</h2>
+        <p class="muted">
+          {_('topic.subtopicStatus')}:{' '}
+          {STATUSES.filter((s) => summary[s])
+            .map((s) => `${_(`status.${s}`)} (${summary[s]})`)
+            .join(' · ')}
+        </p>
+        <TopicTree nodes={topic.children} locale={locale} withSummary />
+      </section>
+    )}
+
+    {(topic.updates.length > 0 || topic.status) && (
+      <Timeline updates={topic.updates} locale={locale} />
+    )}
+
+    <DocumentList documents={topic.data.documents} links={topic.data.links} locale={locale} />
+
+    {assemblies.length > 0 && (
+      <section>
+        <h2>{_('topic.assemblies')}</h2>
+        <ul>
+          {assemblies.map((a) => (
+            <li>
+              <a href={assemblyPath(locale, a.id)}>
+                {pickLocale(a.es, a.en, locale).entry.data.title}
+              </a>{' '}
+              <span class="muted">· {formatDate(a.date, locale)}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </article>
+</Base>
+
+<style>
+  .summary {
+    font-size: 1.1rem;
+  }
+</style>

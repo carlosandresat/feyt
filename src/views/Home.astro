@@ -1,0 +1,57 @@
+---
+import Base from '../layouts/Base.astro';
+import TopicTree from '../components/TopicTree.astro';
+import type { Locale } from '../lib/domain';
+import { assemblyPath, formatDate, topicPath, t } from '../lib/i18n';
+import { getRecentUpdates, getTopic, loadContent, pickLocale, topicTitle } from '../lib/content';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const _ = t(locale);
+
+const { tree, assemblies } = await loadContent();
+const recent = await Promise.all(
+  (await getRecentUpdates(5)).map(async (u) => ({ update: u, topic: await getTopic(u.key) })),
+);
+const upcoming = assemblies.filter((a) => a.es.data.status === 'scheduled').reverse();
+---
+
+<Base locale={locale}>
+  <h1>{_('home.title')}</h1>
+  <p>{_('home.intro')}</p>
+
+  <section>
+    <h2>{_('home.areas')}</h2>
+    <TopicTree nodes={tree} locale={locale} levels={2} />
+  </section>
+
+  <section>
+    <h2>{_('home.upcomingAssemblies')}</h2>
+    {upcoming.length === 0 && <p class="muted">{_('home.noAssemblies')}</p>}
+    <ul>
+      {upcoming.map((a) => (
+        <li>
+          <a href={assemblyPath(locale, a.id)}>{pickLocale(a.es, a.en, locale).entry.data.title}</a>{' '}
+          <span class="muted">
+            · {formatDate(a.date, locale, true)} · {a.es.data.place}
+          </span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section>
+    <h2>{_('home.recentUpdates')}</h2>
+    <ul>
+      {recent.map(({ update, topic }) => (
+        <li>
+          <a href={topicPath(locale, topic.key)}>{topicTitle(topic, locale)}</a>:{' '}
+          {pickLocale(update.es, update.en, locale).entry.data.title}{' '}
+          <span class="muted">· {formatDate(update.date, locale)}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>

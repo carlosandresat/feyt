@@ -1,0 +1,10 @@
+---
+import TopicPage from '../../../views/TopicPage.astro';
+import { topicPaths } from '../../../lib/content';
+
+export const getStaticPaths = topicPaths;
+
+const { key } = Astro.params;
+---
+
+<TopicPage topicKey={key!} locale="en" />

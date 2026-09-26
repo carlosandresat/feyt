@@ -1,0 +1,86 @@
+---
+import { render } from 'astro:content';
+import type { Locale } from '../lib/domain';
+import { formatDate, t } from '../lib/i18n';
+import { pickLocale, type Update } from '../lib/content';
+import StatusBadge from './StatusBadge.astro';
+import DocumentList from './DocumentList.astro';
+
+interface Props {
+  updates: Update[];
+  locale: Locale;
+}
+const { updates, locale } = Astro.props;
+const _ = t(locale);
+
+// `render()` turns each entry's Markdown into a <Content /> component.
+const items = await Promise.all(
+  updates.map(async (update) => {
+    const { entry, missingTranslation } = pickLocale(update.es, update.en, locale);
+    const { Content } = await render(entry);
+    return { update, title: entry.data.title, missingTranslation, Content };
+  }),
+);
+---
+
+<section>
+  <h2>{_('topic.timeline')}</h2>
+  {items.length === 0 && <p class="muted">{_('topic.noUpdates')}</p>}
+  <ol class="timeline">
+    {items.map(({ update, title, missingTranslation, Content }) => (
+      <li>
+        <p class="meta muted">
+          <time datetime={update.date.toISOString()}>{formatDate(update.date, locale)}</time>
+          {` · ${_(`updateType.${update.es.data.type}`)}`}
+          {missingTranslation && ' · ES'}
+        </p>
+        <h3>{title}</h3>
+        {update.es.data.status && (
+          <p class="status-change">
+            {_('topic.statusChangedTo')}{' '}
+            <StatusBadge status={update.es.data.status} locale={locale} />
+          </p>
+        )}
+        <Content />
+        <DocumentList
+          documents={update.es.data.documents}
+          links={update.es.data.links}
+          locale={locale}
+        />
+      </li>
+    ))}
+  </ol>
+</section>
+
+<style>
+  .timeline {
+    list-style: none;
+    padding-left: 1rem;
+    border-left: 2px solid var(--border);
+  }
+  .timeline > li {
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+  .timeline > li::before {
+    content: '';
+    position: absolute;
+    left: -1.42rem;
+    top: 0.4rem;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .meta,
+  .status-change {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+  h3 {
+    margin: 0.1rem 0 0.3rem;
+  }
+  li :global(h2) {
+    font-size: 1rem;
+  }
+</style>

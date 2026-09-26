@@ -1,0 +1,57 @@
+---
+import Base from '../layouts/Base.astro';
+import type { Locale } from '../lib/domain';
+import { t } from '../lib/i18n';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const _ = t(locale);
+---
+
+<Base locale={locale} title={_('search.title')}>
+  <h1>{_('search.title')}</h1>
+  <link href="/pagefind/pagefind-component-ui.css" rel="stylesheet" />
+
+  <!--
+    Pagefind (Component UI) indexes the HTML generated AFTER `astro build`, so /pagefind/ doesn't
+    exist in `pnpm dev`. That's why the script is loaded unprocessed (is:inline) and warns if missing.
+    It searches the index matching <html lang> and translates its own UI automatically.
+  -->
+  <script
+    is:inline
+    type="module"
+    src="/pagefind/pagefind-component-ui.js"
+    onerror="document.getElementById('no-index').hidden = false"
+  ></script>
+  <p id="no-index" class="muted" hidden>
+    {_('search.buildOnly')}
+  </p>
+
+  <pagefind-config instance="feyt"></pagefind-config>
+  <pagefind-input instance="feyt"></pagefind-input>
+  <div class="filters">
+    <pagefind-filter-dropdown
+      instance="feyt"
+      filter="status"
+      label={_('topic.status')}
+    ></pagefind-filter-dropdown>
+    <pagefind-filter-dropdown
+      instance="feyt"
+      filter="area"
+      label={_('topic.area')}
+    ></pagefind-filter-dropdown>
+  </div>
+  <pagefind-summary instance="feyt"></pagefind-summary>
+  <pagefind-results instance="feyt"></pagefind-results>
+</Base>
+
+<style>
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+</style>

@@ -1,0 +1,21 @@
+---
+import type { Locale } from '../lib/domain';
+import { t } from '../lib/i18n';
+
+interface Props {
+  locale: Locale;
+}
+---
+
+<p class="notice" role="note">
+  {t(Astro.props.locale)('translation.missing')}
+</p>
+
+<style>
+  .notice {
+    padding: 0.5rem 0.75rem;
+    border-left: 4px solid #c58a00;
+    background: var(--panel);
+    font-size: 0.9rem;
+  }
+</style>

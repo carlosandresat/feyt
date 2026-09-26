@@ -1,0 +1,10 @@
+---
+import AssemblyPage from '../../../views/AssemblyPage.astro';
+import { assemblyPaths } from '../../../lib/content';
+
+export const getStaticPaths = assemblyPaths;
+
+const { id } = Astro.params;
+---
+
+<AssemblyPage id={id!} locale="en" />

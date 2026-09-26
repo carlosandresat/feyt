@@ -1,0 +1,5 @@
+# Cloudflare redirects (format: source destination code).
+# Renaming or moving a topic folder changes its key: add the old → new path here in both languages
+# so links already shared on social media keep working. Example:
+# /temas/residencias/wifi/*      /temas/residencias/internet/:splat     301
+# /en/temas/residencias/wifi/*   /en/temas/residencias/internet/:splat  301

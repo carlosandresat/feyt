@@ -1,0 +1,48 @@
+---
+import Base from '../layouts/Base.astro';
+import TopicTree from '../components/TopicTree.astro';
+import { STATUSES, type Locale } from '../lib/domain';
+import { t } from '../lib/i18n';
+import { loadContent } from '../lib/content';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const _ = t(locale);
+const { tree } = await loadContent();
+---
+
+<Base locale={locale} title={_('topics.title')}>
+  <h1>{_('topics.title')}</h1>
+
+  <label>
+    {_('topics.filterByStatus')}:
+    <select id="status-filter">
+      <option value="all">{_('topics.all')}</option>
+      {STATUSES.map((s) => (
+        <option value={s}>{_(`status.${s}`)}</option>
+      ))}
+    </select>
+  </label>
+
+  <div id="topic-tree">
+    <TopicTree nodes={tree} locale={locale} withSummary />
+  </div>
+</Base>
+
+<script>
+  // Astro bundles <script> tags as modules; only this small piece of JS reaches the browser.
+  // Shows topics with the chosen status plus the ancestors needed to reach them.
+  const select = document.querySelector<HTMLSelectElement>('#status-filter')!;
+  const items = document.querySelectorAll<HTMLLIElement>('#topic-tree li[data-status]');
+  select.addEventListener('change', () => {
+    const value = select.value;
+    items.forEach((li) => {
+      li.hidden =
+        value !== 'all' &&
+        li.dataset.status !== value &&
+        !li.querySelector(`li[data-status="${value}"]`);
+    });
+  });
+</script>

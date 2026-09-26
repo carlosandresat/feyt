@@ -1,0 +1,42 @@
+---
+import type { Locale, Status } from '../lib/domain';
+import { t } from '../lib/i18n';
+
+interface Props {
+  status: Status;
+  locale: Locale;
+}
+const { status, locale } = Astro.props;
+---
+
+<span class="badge" data-status={status}>
+  {t(locale)(`status.${status}`)}
+</span>
+
+<style>
+  .badge {
+    display: inline-block;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--color, #888);
+    color: #fff;
+  }
+  [data-status='reported'] {
+    --color: #8a5a00;
+  }
+  [data-status='in-progress'] {
+    --color: #0b5cad;
+  }
+  [data-status='awaiting-response'] {
+    --color: #6b3fa0;
+  }
+  [data-status='stalled'] {
+    --color: #b3261e;
+  }
+  [data-status='resolved'] {
+    --color: #1e7a3c;
+  }
+</style>

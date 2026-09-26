@@ -1,0 +1,6 @@
+# LF line endings for everyone (avoids noisy diffs between Windows and macOS/Linux contributors).
+* text=auto eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary

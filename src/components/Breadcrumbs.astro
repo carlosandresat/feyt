@@ -1,0 +1,44 @@
+---
+import type { Locale } from '../lib/domain';
+import { localizedPath, topicPath, t } from '../lib/i18n';
+import { topicTitle, type Topic } from '../lib/content';
+
+interface Props {
+  locale: Locale;
+  ancestors: Topic[];
+  current: string;
+}
+const { locale, ancestors, current } = Astro.props;
+const _ = t(locale);
+---
+
+<nav aria-label={_('breadcrumbs.label')}>
+  <ol>
+    <li>
+      <a href={localizedPath(locale, '/temas/')}>{_('nav.topics')}</a>
+    </li>
+    {ancestors.map((a) => (
+      <li>
+        <a href={topicPath(locale, a.key)}>{topicTitle(a, locale)}</a>
+      </li>
+    ))}
+    <li aria-current="page">{current}</li>
+  </ol>
+</nav>
+
+<style>
+  ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  li + li::before {
+    content: '›';
+    margin-right: 0.25rem;
+  }
+</style>

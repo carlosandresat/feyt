@@ -1,0 +1,44 @@
+---
+import Base from '../layouts/Base.astro';
+import type { Locale } from '../lib/domain';
+import { assemblyPath, formatDate, t } from '../lib/i18n';
+import { loadContent, pickLocale, type Assembly } from '../lib/content';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const _ = t(locale);
+const { assemblies } = await loadContent();
+const groups: [string, Assembly[]][] = [
+  [_('assemblies.upcoming'), assemblies.filter((a) => a.es.data.status === 'scheduled').reverse()],
+  [_('assemblies.past'), assemblies.filter((a) => a.es.data.status !== 'scheduled')],
+];
+---
+
+<Base locale={locale} title={_('assemblies.title')}>
+  <h1>{_('assemblies.title')}</h1>
+  {groups.map(
+    ([heading, list]) =>
+      list.length > 0 && (
+        <section>
+          <h2>{heading}</h2>
+          <ul>
+            {list.map((a) => {
+              const { data } = pickLocale(a.es, a.en, locale).entry;
+              return (
+                <li>
+                  <a href={assemblyPath(locale, a.id)}>{data.title}</a>{' '}
+                  <span class="muted">
+                    · {formatDate(a.date, locale, true)} · {_(`assemblyStatus.${a.es.data.status}`)}
+                  </span>
+                  <br />
+                  {data.summary}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ),
+  )}
+</Base>

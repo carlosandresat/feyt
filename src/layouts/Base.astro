@@ -1,0 +1,119 @@
+---
+import type { Locale } from '../lib/domain';
+import { localizedPath, switchLocale, t } from '../lib/i18n';
+
+interface Props {
+  locale: Locale;
+  title?: string;
+  description?: string;
+}
+
+const { locale, title, description } = Astro.props;
+const _ = t(locale);
+const otherLocale: Locale = locale === 'es' ? 'en' : 'es';
+const fullTitle = title ? `${title} · FEYT` : _('site.name');
+const nav = [
+  { href: localizedPath(locale, '/'), label: _('nav.home') },
+  { href: localizedPath(locale, '/temas/'), label: _('nav.topics') },
+  { href: localizedPath(locale, '/asambleas/'), label: _('nav.assemblies') },
+  { href: localizedPath(locale, '/buscar/'), label: _('nav.search') },
+];
+const otherLocalePath = switchLocale(Astro.url.pathname, otherLocale);
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description ?? _('site.description')} />
+    <link rel="alternate" hreflang={otherLocale} href={otherLocalePath} />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href={localizedPath(locale, '/')}>
+        FEYT
+      </a>
+      <nav>
+        {nav.map((item) => (
+          <a href={item.href}>{item.label}</a>
+        ))}
+        <a href={otherLocalePath} hreflang={otherLocale} lang={otherLocale}>
+          {_('nav.language')}
+        </a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --text: #1c1f24;
+    --muted: #5b6470;
+    --bg: #ffffff;
+    --panel: #f4f6f8;
+    --border: #dde2e7;
+    --accent: #0b5cad;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: #e6e9ed;
+      --muted: #a0a9b4;
+      --bg: #121417;
+      --panel: #1c1f24;
+      --border: #2e333a;
+      --accent: #6cb0ff;
+    }
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    line-height: 1.55;
+    color: var(--text);
+    background: var(--bg);
+  }
+  main {
+    max-width: 52rem;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 4rem;
+  }
+  a {
+    color: var(--accent);
+  }
+  h1 {
+    line-height: 1.2;
+  }
+  .muted {
+    color: var(--muted);
+  }
+</style>
+
+<style>
+  .site-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    font-weight: 700;
+    text-decoration: none;
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+</style>

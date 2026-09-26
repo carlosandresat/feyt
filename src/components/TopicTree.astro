@@ -1,0 +1,58 @@
+---
+// Nested list of topics. Renders itself (`Astro.self`) to support any depth.
+import type { Locale } from '../lib/domain';
+import { topicPath } from '../lib/i18n';
+import { topicText, type Topic } from '../lib/content';
+import StatusBadge from './StatusBadge.astro';
+
+interface Props {
+  nodes: Topic[];
+  locale: Locale;
+  /** Levels to render below `nodes` (Infinity = the whole tree). */
+  levels?: number;
+  withSummary?: boolean;
+}
+const { nodes, locale, levels = Infinity, withSummary = false } = Astro.props;
+---
+
+<ul class="tree">
+  {nodes.map((node) => {
+    const { data } = topicText(node, locale).entry;
+    return (
+      <li data-status={node.status ?? 'area'}>
+        <div class="row">
+          <a href={topicPath(locale, node.key)}>{data.title}</a>
+          {node.status && <StatusBadge status={node.status} locale={locale} />}
+        </div>
+        {withSummary && <p class="muted">{data.summary}</p>}
+        {levels > 1 && node.children.length > 0 && (
+          <Astro.self nodes={node.children} locale={locale} levels={levels - 1} />
+        )}
+      </li>
+    );
+  })}
+</ul>
+
+<style>
+  .tree {
+    list-style: none;
+    padding-left: 0;
+    margin: 0.25rem 0;
+  }
+  .tree .tree {
+    padding-left: 1.1rem;
+    border-left: 2px solid var(--border);
+  }
+  li {
+    margin: 0.35rem 0;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  p {
+    margin: 0.1rem 0 0;
+  }
+</style>

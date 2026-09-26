@@ -1,0 +1,48 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import type { Locale } from '../lib/domain';
+import { formatDate, t } from '../lib/i18n';
+
+type TopicData = CollectionEntry<'topics'>['data'];
+interface Props {
+  documents: TopicData['documents'];
+  links: TopicData['links'];
+  locale: Locale;
+}
+const { documents, links, locale } = Astro.props;
+const _ = t(locale);
+---
+
+{documents.length > 0 && (
+  <section>
+    <h2>{_('topic.documents')}</h2>
+    <ul>
+      {documents.map((d) => (
+        <li>
+          <a href={d.file ?? d.url} target={d.url ? '_blank' : undefined} rel="noopener">
+            {d.title}
+          </a>{' '}
+          <span class="muted">
+            · {_(`documentType.${d.type}`)}
+            {d.date && ` · ${formatDate(d.date, locale)}`}
+          </span>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+{links.length > 0 && (
+  <section>
+    <h2>{_('topic.links')}</h2>
+    <ul>
+      {links.map((l) => (
+        <li>
+          <a href={l.url} target="_blank" rel="noopener">
+            {l.title ?? l.url}
+          </a>{' '}
+          <span class="muted">· {l.platform}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

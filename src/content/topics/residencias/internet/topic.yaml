@@ -1,0 +1,14 @@
+status: in-progress
+priority: high
+order: 1
+created: 2026-08-20
+tags: [internet, conectividad]
+documents:
+  - title: Oficio a la Dirección de TICs
+    file: /docs/residencias/internet/oficio-2026-09-02.pdf
+    date: 2026-09-02
+    type: letter
+links:
+  - platform: instagram
+    url: https://www.instagram.com/
+    title: Comunicado sobre el internet en residencias
