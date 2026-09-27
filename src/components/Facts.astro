@@ -1,0 +1,44 @@
+---
+// Key facts of an assembly or event (when, where, format, status) as a labeled list.
+export interface Fact {
+  label: string;
+  value: string;
+  /** Machine-readable datetime, when the value is a date. */
+  datetime?: string;
+}
+
+interface Props {
+  facts: Fact[];
+}
+const { facts } = Astro.props;
+---
+
+<dl class="facts">
+  {facts.map((fact) => (
+    <div>
+      <dt>{fact.label}</dt>
+      <dd>{fact.datetime ? <time datetime={fact.datetime}>{fact.value}</time> : fact.value}</dd>
+    </div>
+  ))}
+</dl>
+
+<style>
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem 2rem;
+    margin: 1.5rem 0;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+  }
+  dt {
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  dd {
+    margin: 0;
+    font-weight: 600;
+  }
+</style>

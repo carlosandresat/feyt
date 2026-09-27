@@ -124,6 +124,15 @@ blockquote p {
   color: var(--muted);
 }
 
+/* Small link back to the parent section, above a detail page's title. */
+.section-link {
+  margin: 0 0 1.25rem;
+  font-size: var(--step--1);
+}
+.section-link a {
+  color: var(--muted);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

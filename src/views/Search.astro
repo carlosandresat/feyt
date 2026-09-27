@@ -29,25 +29,101 @@ const _ = t(locale);
     {_('search.buildOnly')}
   </p>
 
-  <pagefind-config instance="feyt"></pagefind-config>
-  <pagefind-input instance="feyt"></pagefind-input>
-  <div class="filters">
-    <pagefind-filter-dropdown
-      instance="feyt"
-      filter="status"
-      label={_('topic.status')}
-    ></pagefind-filter-dropdown>
-    <pagefind-filter-dropdown
-      instance="feyt"
-      filter="area"
-      label={_('topic.area')}
-    ></pagefind-filter-dropdown>
+  <div class="search">
+    <pagefind-config instance="feyt"></pagefind-config>
+    <pagefind-input instance="feyt"></pagefind-input>
+    <div class="filters">
+      <pagefind-filter-dropdown
+        instance="feyt"
+        filter="status"
+        label={_('topic.status')}
+      ></pagefind-filter-dropdown>
+      <pagefind-filter-dropdown
+        instance="feyt"
+        filter="area"
+        label={_('topic.area')}
+      ></pagefind-filter-dropdown>
+    </div>
+    <pagefind-summary instance="feyt"></pagefind-summary>
+    <pagefind-results instance="feyt"></pagefind-results>
   </div>
-  <pagefind-summary instance="feyt"></pagefind-summary>
-  <pagefind-results instance="feyt"></pagefind-results>
 </Base>
 
+<style is:global>
+  /*
+   * Pagefind's components reset `color-scheme` to `normal`, so a raw light-dark() token passed in
+   * would always resolve to its light value inside them. Registering the color variables as
+   * <color> makes the browser resolve light-dark() here, on .search (which has the right theme),
+   * and hand Pagefind the final color.
+   */
+  @property --pf-background {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-hover {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-text {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-text-secondary {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-text-muted {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-border {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-border-focus {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-outline-focus {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-skeleton {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+  @property --pf-mark {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: transparent;
+  }
+</style>
+
 <style>
+  /* Pagefind sets its defaults on :root; redefining them here maps its UI onto our tokens. */
+  .search {
+    --pf-font: var(--font-body-stack);
+    --pf-background: var(--surface);
+    --pf-hover: var(--surface-2);
+    --pf-text: var(--text);
+    --pf-text-secondary: var(--muted);
+    --pf-text-muted: var(--muted);
+    --pf-border: var(--border);
+    --pf-border-focus: var(--accent);
+    --pf-outline-focus: var(--accent);
+    --pf-border-radius: var(--radius-m);
+    --pf-skeleton: var(--surface-2);
+    --pf-mark: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
   .filters {
     display: flex;
     flex-wrap: wrap;

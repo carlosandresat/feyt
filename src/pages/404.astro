@@ -3,8 +3,47 @@ import Base from '../layouts/Base.astro';
 ---
 
 <Base locale="es" title="404">
-  <h1>Página no encontrada · Page not found</h1>
-  <p>
-    <a href="/">Volver al inicio</a> · <a href="/en/">Back to home</a>
-  </p>
+  <div class="lost">
+    <span class="severed" aria-hidden="true"></span>
+    <h1>Esta rama no existe</h1>
+    <p lang="en" class="muted">
+      This branch doesn't exist.
+    </p>
+    <p class="links">
+      <a href="/">Volver al inicio</a>
+      <a href="/en/" lang="en">
+        Back to home
+      </a>
+    </p>
+  </div>
 </Base>
+
+<style>
+  .lost {
+    padding: 3rem 0;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+  }
+  /* A dendrite that ends in an unlit node. */
+  .severed {
+    display: block;
+    width: 6rem;
+    height: 2px;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(90deg, var(--branch), transparent);
+    position: relative;
+  }
+  .severed::after {
+    content: '';
+    position: absolute;
+    right: -0.9rem;
+    top: -0.35rem;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    border: 2px dashed var(--muted);
+  }
+</style>
