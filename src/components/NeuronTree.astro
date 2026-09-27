@@ -1,0 +1,430 @@
+---
+// The topic tree drawn as a neuron: the soma (FEYT, or the current topic) at the top, dendrites
+// branching down to every area and issue, each node lit with its status color.
+// Geometry is computed at build time (src/lib/neuron.ts). The HTML list of links is the accessible
+// content; the SVG behind it is decorative (aria-hidden) and lines up with it row by row.
+import { STATUSES, type Locale } from '../lib/domain';
+import { drawNeuron, flattenNeuron, type NeuronMetrics } from '../lib/neuron';
+import { descendants } from '../lib/tree';
+import { topicPath, t } from '../lib/i18n';
+import { topicTitle, type Topic } from '../lib/content';
+
+interface Props {
+  /** Unique per page; used for SVG filter ids. */
+  id: string;
+  locale: Locale;
+  nodes: Topic[];
+  soma: { title: string; caption?: string };
+  maxDepth?: number;
+  /** Play the one-time growth sequence on load. */
+  animate?: boolean;
+  /** Adds a status filter that dims everything not on a path to a matching issue. */
+  filterable?: boolean;
+}
+const {
+  id,
+  locale,
+  nodes,
+  soma,
+  maxDepth = Infinity,
+  animate = false,
+  filterable = false,
+} = Astro.props;
+const _ = t(locale);
+
+// Same row height in both layouts so the HTML rows fit either drawing; only the indent changes.
+const wide: NeuronMetrics = { rowHeight: 64, indent: 52, pad: 24 };
+const narrow: NeuronMetrics = { rowHeight: 64, indent: 26, pad: 14 };
+
+const rows = flattenNeuron(nodes, maxDepth);
+const drawings = { wide: drawNeuron(rows, wide), narrow: drawNeuron(rows, narrow) };
+
+const byKey = new Map<string, Topic>();
+const index = (list: Topic[]) =>
+  list.forEach((n) => {
+    byKey.set(n.key, n);
+    index(n.children);
+  });
+index(nodes);
+
+const plural = new Intl.PluralRules(locale);
+const issueCount = (topic: Topic) => {
+  const n = descendants(topic).filter((d) => d.status).length;
+  return _(plural.select(n) === 'one' ? 'count.issues.one' : 'count.issues.other').replace(
+    '{n}',
+    String(n),
+  );
+};
+const vars = {
+  rowH: `${wide.rowHeight}px`,
+  wideIndent: `${wide.indent}px`,
+  widePad: `${wide.pad}px`,
+  narrowIndent: `${narrow.indent}px`,
+  narrowPad: `${narrow.pad}px`,
+  rows: rows.length + 1,
+};
+---
+
+<div class="neuron" class:list={{ animate }} data-neuron={id}>
+  {filterable && (
+    <label class="filter">
+      {_('topics.filterByStatus')}
+      <select data-neuron-filter>
+        <option value="">{_('topics.all')}</option>
+        {STATUSES.map((s) => (
+          <option value={s}>{_(`status.${s}`)}</option>
+        ))}
+      </select>
+    </label>
+  )}
+  <div class="canvas">
+    {(['wide', 'narrow'] as const).map((variant) => {
+      const d = drawings[variant];
+      const glowId = `glow-${id}-${variant}`;
+      return (
+        <svg
+          class:list={['drawing', variant]}
+          width={d.width}
+          height={d.height}
+          viewBox={`0 0 ${d.width} ${d.height}`}
+          aria-hidden="true"
+        >
+          <defs>
+            <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3.5" />
+            </filter>
+          </defs>
+          <g class="glow" filter={`url(#${glowId})`}>
+            {d.branches.map((b) => (
+              <path
+                d={b.d}
+                data-key={b.key}
+                pathLength="1"
+                stroke-width={b.width * 2.2}
+                style={`--d:${b.depth}`}
+              />
+            ))}
+          </g>
+          <g class="branches">
+            {d.branches.map((b) => (
+              <path
+                d={b.d}
+                data-key={b.key}
+                pathLength="1"
+                stroke-width={b.width}
+                style={`--d:${b.depth}`}
+              />
+            ))}
+          </g>
+          <g class="halos" filter={`url(#${glowId})`}>
+            <circle class="soma-halo" cx={d.soma.x} cy={d.soma.y} r={d.soma.r * 2.2} />
+            {d.nodes
+              .filter((n) => n.status)
+              .map((n) => (
+                <circle
+                  class="halo"
+                  data-key={n.key}
+                  cx={n.x}
+                  cy={n.y}
+                  r={n.r * 2.4}
+                  style={`--d:${n.depth}; --status: var(--status-${n.status})`}
+                />
+              ))}
+          </g>
+          <g class="nodes">
+            <circle class="soma" cx={d.soma.x} cy={d.soma.y} r={d.soma.r} />
+            {d.nodes.map((n) => (
+              <circle
+                class:list={['node', { area: !n.status }]}
+                data-key={n.key}
+                cx={n.x}
+                cy={n.y}
+                r={n.r}
+                style={
+                  n.status
+                    ? `--d:${n.depth}; --status: var(--status-${n.status})`
+                    : `--d:${n.depth}`
+                }
+              />
+            ))}
+          </g>
+        </svg>
+      );
+    })}
+
+    <p class="soma-label">
+      <span class="soma-title">{soma.title}</span>
+      {soma.caption && <span class="caption">{soma.caption}</span>}
+    </p>
+    <ol class="rows">
+      {rows.map((row) => {
+        const topic = byKey.get(row.key)!;
+        const parent = row.parentKey ? byKey.get(row.parentKey) : undefined;
+        return (
+          <li
+            style={`--depth:${row.depth}; --row:${row.row}; --d:${row.depth}`}
+            data-key={row.key}
+            data-path={row.path.join(' ')}
+            data-status={row.status ?? ''}
+          >
+            <a class:list={['title', { area: !row.status }]} href={topicPath(locale, row.key)}>
+              {topicTitle(topic, locale)}
+              {parent && <span class="sr-only">({topicTitle(parent, locale)})</span>}
+            </a>
+            {row.status ? (
+              <span class="meta status" style={`--status: var(--status-${row.status})`}>
+                {_(`status.${row.status}`)}
+              </span>
+            ) : (
+              <span class="meta">{issueCount(topic)}</span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  </div>
+</div>
+
+<script>
+  // Lights the path from the soma to the row under the pointer (or keyboard focus), and applies
+  // the optional status filter. Everything else about the tree is static HTML/SVG.
+  for (const neuron of document.querySelectorAll<HTMLElement>('[data-neuron]')) {
+    const shapes = [...neuron.querySelectorAll<SVGElement>('svg [data-key]')];
+    const rows = [...neuron.querySelectorAll<HTMLLIElement>('.rows li')];
+
+    const light = (keys: Set<string> | null) => {
+      neuron.toggleAttribute('data-lit', keys !== null);
+      for (const el of [...shapes, ...rows]) {
+        el.classList.toggle('lit', keys !== null && keys.has(el.dataset.key!));
+      }
+    };
+    const onEnter = (event: Event) => {
+      const row = (event.target as Element).closest<HTMLLIElement>('.rows li');
+      if (row) light(new Set(row.dataset.path!.split(' ')));
+    };
+    neuron.addEventListener('pointerover', onEnter);
+    neuron.addEventListener('focusin', onEnter);
+    neuron.addEventListener('pointerleave', () => light(null));
+    neuron.addEventListener('focusout', () => light(null));
+
+    const select = neuron.querySelector<HTMLSelectElement>('[data-neuron-filter]');
+    select?.addEventListener('change', () => {
+      const status = select.value;
+      // Keep every node on a path from the soma to a matching issue; dim the rest.
+      const keep = new Set(
+        rows.filter((r) => r.dataset.status === status).flatMap((r) => r.dataset.path!.split(' ')),
+      );
+      neuron.toggleAttribute('data-filtered', status !== '');
+      for (const el of [...shapes, ...rows]) {
+        el.classList.toggle('kept', keep.has(el.dataset.key!));
+      }
+    });
+  }
+</script>
+
+<style define:vars={vars}>
+  .neuron {
+    container-type: inline-size;
+  }
+  .filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    color: var(--muted);
+  }
+  .filter select {
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    padding: 0.3rem 0.5rem;
+  }
+  .canvas {
+    position: relative;
+    height: calc(var(--rows) * var(--rowH));
+    --indent: var(--narrowIndent);
+    --pad: var(--narrowPad);
+  }
+  .drawing {
+    position: absolute;
+    inset: 0 auto auto 0;
+    overflow: visible;
+  }
+  .drawing.wide {
+    display: none;
+  }
+  @container (min-width: 30rem) {
+    .canvas {
+      --indent: var(--wideIndent);
+      --pad: var(--widePad);
+    }
+    .drawing.wide {
+      display: block;
+    }
+    .drawing.narrow {
+      display: none;
+    }
+  }
+
+  /* --- drawing --- */
+  .branches path,
+  .glow path {
+    fill: none;
+    stroke-linecap: round;
+    transition:
+      opacity 0.25s,
+      stroke 0.25s;
+  }
+  .branches path {
+    stroke: var(--branch);
+    opacity: 0.85;
+  }
+  .glow path {
+    stroke: var(--glow);
+    opacity: 0.45;
+  }
+  .soma {
+    fill: var(--brand);
+  }
+  .soma-halo {
+    fill: var(--glow);
+    opacity: 0.55;
+  }
+  .node {
+    fill: var(--status);
+    transition: opacity 0.25s;
+  }
+  .node.area {
+    fill: var(--bg);
+    stroke: var(--branch);
+    stroke-width: 2;
+  }
+  .halo {
+    fill: light-dark(transparent, var(--status));
+    opacity: 0.5;
+    transition: opacity 0.25s;
+  }
+
+  /* --- labels --- */
+  .soma-label {
+    position: absolute;
+    top: 0;
+    left: calc(var(--pad) + 26px);
+    right: 0;
+    height: var(--rowH);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .soma-title {
+    font-family: var(--font-display-stack);
+    font-weight: 700;
+    font-size: var(--step-1);
+    letter-spacing: 0.02em;
+  }
+  .caption {
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+  .rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .rows li {
+    position: absolute;
+    top: calc(var(--row) * var(--rowH));
+    left: calc(var(--pad) + var(--depth) * var(--indent) + 16px);
+    right: 0;
+    height: var(--rowH);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    transition: opacity 0.25s;
+  }
+  .title {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .title.area {
+    font-family: var(--font-display-stack);
+    font-weight: 500;
+  }
+  /* Make the whole row the hit area. */
+  .title::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .title:hover,
+  .title:focus-visible {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+  .meta {
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  .meta.status {
+    color: var(--status);
+    font-weight: 600;
+  }
+
+  /* --- interaction: light the hovered path, dim the rest --- */
+  .neuron[data-lit] :is(.branches path, .node, .halo, .rows li):not(.lit) {
+    opacity: 0.25;
+  }
+  .neuron[data-lit] .branches path.lit {
+    stroke: var(--accent);
+    opacity: 1;
+  }
+  .neuron[data-lit] .glow path.lit {
+    opacity: 0.9;
+  }
+  .neuron[data-filtered]:not([data-lit])
+    :is(.branches path, .glow path, .node, .halo, .rows li):not(.kept) {
+    opacity: 0.18;
+  }
+
+  /* --- one-time growth: branches draw from the soma outward, level by level --- */
+  /* `backwards` holds the first keyframe during the delay; once done, the normal styles (and the
+     hover/filter transitions) apply again, so the animation never locks opacity. */
+  .animate :is(.branches path, .glow path) {
+    stroke-dasharray: 1;
+    animation: grow 0.7s cubic-bezier(0.3, 0.7, 0.3, 1) backwards;
+    animation-delay: calc(var(--d) * 0.28s - 0.15s);
+  }
+  .animate :is(.node, .halo, .rows li, .soma-label) {
+    animation: appear 0.45s ease-out backwards;
+    animation-delay: calc(var(--d, 0) * 0.28s + 0.35s);
+  }
+  .animate :is(.soma, .soma-halo) {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pulse 0.6s ease-out backwards;
+  }
+  @keyframes grow {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+  @keyframes appear {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pulse {
+    from {
+      transform: scale(0.3);
+      opacity: 0;
+    }
+  }
+</style>

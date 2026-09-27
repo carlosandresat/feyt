@@ -1,9 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
+import NeuronTree from '../components/NeuronTree.astro';
 import ScheduleList from '../components/ScheduleList.astro';
-import TopicTree from '../components/TopicTree.astro';
-import type { Locale } from '../lib/domain';
-import { assemblyPath, eventPath, formatDate, topicPath, t } from '../lib/i18n';
+import { STATUSES, type Locale } from '../lib/domain';
+import { assemblyPath, eventPath, formatDate, localizedPath, topicPath, t } from '../lib/i18n';
+import { descendants } from '../lib/tree';
 import {
   getRecentUpdates,
   getTopic,
@@ -20,6 +21,16 @@ const { locale } = Astro.props;
 const _ = t(locale);
 
 const { tree, assemblies, events } = await loadContent();
+const issues = tree.flatMap((root) => [root, ...descendants(root)]).filter((n) => n.status);
+const legend = STATUSES.map((status) => ({
+  status,
+  count: issues.filter((i) => i.status === status).length,
+}));
+const plural = new Intl.PluralRules(locale);
+const somaCaption = _(
+  plural.select(issues.length) === 'one' ? 'count.issues.one' : 'count.issues.other',
+).replace('{n}', String(issues.length));
+
 const recent = await Promise.all(
   (await getRecentUpdates(5)).map(async (u) => ({ update: u, topic: await getTopic(u.key) })),
 );
@@ -48,37 +59,201 @@ const nextEvents = upcoming(events)
   });
 ---
 
-<Base locale={locale}>
-  <h1>{_('home.title')}</h1>
-  <p>{_('home.intro')}</p>
-
-  <section>
-    <h2>{_('home.areas')}</h2>
-    <TopicTree nodes={tree} locale={locale} levels={2} />
-  </section>
-
-  <section>
-    <h2>{_('home.upcomingAssemblies')}</h2>
-    {nextAssemblies.length === 0 && <p class="muted">{_('home.noAssemblies')}</p>}
-    <ScheduleList items={nextAssemblies} locale={locale} />
-  </section>
-
-  <section>
-    <h2>{_('home.upcomingEvents')}</h2>
-    {nextEvents.length === 0 && <p class="muted">{_('home.noEvents')}</p>}
-    <ScheduleList items={nextEvents} locale={locale} />
-  </section>
-
-  <section>
-    <h2>{_('home.recentUpdates')}</h2>
-    <ul>
-      {recent.map(({ update, topic }) => (
-        <li>
-          <a href={topicPath(locale, topic.key)}>{topicTitle(topic, locale)}</a>:{' '}
-          {pickLocale(update.es, update.en, locale).entry.data.title}{' '}
-          <span class="muted">({formatDate(update.date, locale)})</span>
+<Base locale={locale} wide>
+  <section class="hero">
+    <div class="text">
+      <h1>{_('home.title')}</h1>
+      <p class="lead">{_('home.intro')}</p>
+    </div>
+    <ul class="legend" aria-label={_('home.legend')}>
+      {legend.map(({ status, count }) => (
+        <li style={`--status: var(--status-${status})`}>
+          <span class="dot" aria-hidden="true" />
+          {_(`status.${status}`)}
+          <span class="count">{count}</span>
         </li>
       ))}
     </ul>
+    <div class="map">
+      <NeuronTree
+        id="home"
+        locale={locale}
+        nodes={tree}
+        soma={{ title: 'FEYT', caption: somaCaption }}
+        maxDepth={3}
+        animate
+      />
+    </div>
+    <p class="actions">
+      <a class="primary" href={localizedPath(locale, '/buscar/')}>
+        {_('home.searchCta')}
+      </a>
+      <a href={localizedPath(locale, '/temas/')}>{_('home.topicsCta')}</a>
+    </p>
   </section>
+
+  <div class="below">
+    <section>
+      <h2>{_('home.upcomingAssemblies')}</h2>
+      {nextAssemblies.length === 0 && <p class="muted">{_('home.noAssemblies')}</p>}
+      <ScheduleList items={nextAssemblies} locale={locale} />
+    </section>
+    <section>
+      <h2>{_('home.upcomingEvents')}</h2>
+      {nextEvents.length === 0 && <p class="muted">{_('home.noEvents')}</p>}
+      <ScheduleList items={nextEvents} locale={locale} />
+    </section>
+    <section class="recent">
+      <h2>{_('home.recentUpdates')}</h2>
+      <ol>
+        {recent.map(({ update, topic }) => (
+          <li>
+            <time class="muted" datetime={update.date.toISOString()}>
+              {formatDate(update.date, locale)}
+            </time>
+            <a href={topicPath(locale, topic.key)}>{topicTitle(topic, locale)}</a>
+            <span>{pickLocale(update.es, update.en, locale).entry.data.title}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  </div>
 </Base>
+
+<style>
+  /* Mobile: headline, legend, tree, actions (the tree must be on the first screen).
+     Desktop: text, legend and actions on the left; the tree fills the right column. */
+  .hero {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 76rem;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 0.5rem + 4vw, 4.5rem) var(--gutter) 3rem;
+  }
+  @media (min-width: 62rem) {
+    .hero {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      grid-template-rows: auto auto 1fr;
+      grid-template-areas:
+        'text map'
+        'actions map'
+        'legend map';
+      column-gap: 3rem;
+      align-items: start;
+    }
+    .text {
+      grid-area: text;
+    }
+    .map {
+      grid-area: map;
+    }
+    .actions {
+      grid-area: actions;
+    }
+    .legend {
+      grid-area: legend;
+      flex-direction: column;
+      max-width: 18rem;
+    }
+    .legend li {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+    }
+  }
+  h1 {
+    font-size: clamp(2rem, 1.2rem + 2.6vw, 3.2rem);
+    font-weight: 600;
+    max-width: 16ch;
+  }
+  .lead {
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--muted);
+    max-width: 36ch;
+    margin: 0;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem;
+    margin: 0;
+  }
+  .primary {
+    padding: 0.7rem 1.3rem;
+    border-radius: 999px;
+    background: var(--brand);
+    color: var(--bg);
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 0 1.5rem light-dark(transparent, color-mix(in srgb, var(--glow) 45%, transparent));
+  }
+  .primary:hover {
+    background: var(--accent);
+  }
+  .legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 1rem;
+  }
+  .legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: var(--step--1);
+  }
+  .dot {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: var(--status);
+    box-shadow: 0 0 0.6rem light-dark(transparent, var(--status));
+  }
+  .count {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .map {
+    min-width: 0;
+  }
+
+  .below {
+    display: grid;
+    gap: 0 3rem;
+    max-width: 76rem;
+    margin: 0 auto;
+    padding: 1rem var(--gutter) 5rem;
+    border-top: 1px solid var(--border);
+  }
+  @media (min-width: 52rem) {
+    .below {
+      grid-template-columns: 1fr 1fr;
+    }
+    .recent {
+      grid-column: 1 / -1;
+    }
+  }
+  .recent ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.9rem;
+  }
+  .recent li {
+    display: grid;
+    gap: 0.1rem;
+  }
+  @media (min-width: 52rem) {
+    .recent li {
+      grid-template-columns: 12rem 16rem 1fr;
+      gap: 1.5rem;
+    }
+  }
+  .recent time {
+    font-size: var(--step--1);
+  }
+</style>

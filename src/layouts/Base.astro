@@ -114,15 +114,33 @@ const current = Astro.url.pathname;
 </script>
 
 <style>
+  /* Mobile: brand and tools on the first row, navigation below. Wide: one row. */
   .site-header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'brand tools'
+      'nav nav';
+    gap: 0.6rem 2rem;
     align-items: center;
     padding: 0.9rem var(--gutter);
     border-bottom: 1px solid var(--border);
   }
+  @media (min-width: 48rem) {
+    .site-header {
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas: 'brand nav tools';
+    }
+  }
+  nav {
+    grid-area: nav;
+  }
+  .tools {
+    grid-area: tools;
+  }
   .brand {
+    grid-area: brand;
+    justify-self: start;
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
@@ -144,7 +162,6 @@ const current = Astro.url.pathname;
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem 1.25rem;
-    margin-right: auto;
   }
   nav a,
   .tools a {
