@@ -24,6 +24,12 @@ const nav = [
 ];
 const otherLocalePath = switchLocale(Astro.url.pathname, otherLocale);
 const current = Astro.url.pathname;
+
+// FEYT's official accounts. Fixed site chrome, not editable content.
+const SOCIAL = [
+  { platform: 'facebook' as const, url: 'https://www.facebook.com/FEYachayTech' },
+  { platform: 'instagram' as const, url: 'https://www.instagram.com/feyt_estudiantes/' },
+];
 ---
 
 <!doctype html>
@@ -86,6 +92,26 @@ const current = Astro.url.pathname;
     </main>
     <footer class="site-footer">
       <p>{_('footer.text')}</p>
+      <ul class="social" aria-label={_('footer.social')}>
+        {SOCIAL.map((s) => (
+          <li>
+            <a href={s.url} target="_blank" rel="noopener" aria-label={_(`platform.${s.platform}`)}>
+              {s.platform === 'facebook' && (
+                <svg class="icon-facebook" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                </svg>
+              )}
+              {s.platform === 'instagram' && (
+                <svg class="icon-instagram" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" y1="6.5" x2="17.5" y2="6.5" />
+                </svg>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
     </footer>
   </body>
 </html>
@@ -223,6 +249,11 @@ const current = Astro.url.pathname;
     display: none;
   }
   .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     padding: 2rem var(--gutter);
     border-top: 1px solid var(--border);
     color: var(--muted);
@@ -230,5 +261,37 @@ const current = Astro.url.pathname;
   }
   .site-footer p {
     margin: 0;
+  }
+  .social {
+    display: flex;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .social a {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    color: var(--muted);
+  }
+  .social a:hover {
+    color: var(--accent);
+  }
+  .social svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .icon-facebook {
+    fill: currentColor;
+  }
+  .icon-instagram {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 </style>

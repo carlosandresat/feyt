@@ -11,6 +11,7 @@ const es = {
   'theme.toDark': 'Cambiar a modo oscuro',
   'footer.text':
     'Federación de Estudiantes de Yachay Tech. Contenido publicado por estudiantes voluntarios.',
+  'footer.social': 'Redes sociales',
   'nav.topics': 'Temas',
   'nav.assemblies': 'Asambleas',
   'nav.events': 'Eventos',
@@ -120,6 +121,7 @@ const en: Record<keyof typeof es, string> = {
   'theme.toLight': 'Switch to light mode',
   'theme.toDark': 'Switch to dark mode',
   'footer.text': 'Yachay Tech Student Federation. Content published by student volunteers.',
+  'footer.social': 'Social media',
   'nav.topics': 'Topics',
   'nav.assemblies': 'Assemblies',
   'nav.events': 'Events',
