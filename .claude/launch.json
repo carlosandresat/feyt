@@ -8,6 +8,12 @@
       "port": 4321
     },
     {
+      "name": "preview-lan",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["preview", "--host"],
+      "port": 4321
+    },
+    {
       "name": "dev",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
