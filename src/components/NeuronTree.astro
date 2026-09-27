@@ -91,7 +91,7 @@ const vars = {
         >
           <defs>
             <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3.5" />
+              <feGaussianBlur stdDeviation="2.6" />
             </filter>
           </defs>
           <g class="glow" filter={`url(#${glowId})`}>
@@ -117,7 +117,7 @@ const vars = {
             ))}
           </g>
           <g class="halos" filter={`url(#${glowId})`}>
-            <circle class="soma-halo" cx={d.soma.x} cy={d.soma.y} r={d.soma.r * 2.2} />
+            <circle class="soma-halo" cx={d.soma.x} cy={d.soma.y} r={d.soma.r * 1.9} />
             {d.nodes
               .filter((n) => n.status)
               .map((n) => (
@@ -126,7 +126,7 @@ const vars = {
                   data-key={n.key}
                   cx={n.x}
                   cy={n.y}
-                  r={n.r * 2.4}
+                  r={n.r * 2}
                   style={`--d:${n.depth}; --status: var(--status-${n.status})`}
                 />
               ))}
@@ -283,14 +283,14 @@ const vars = {
   }
   .glow path {
     stroke: var(--glow);
-    opacity: 0.45;
+    opacity: 0.32;
   }
   .soma {
     fill: var(--brand);
   }
   .soma-halo {
     fill: var(--glow);
-    opacity: 0.55;
+    opacity: 0.4;
   }
   .node {
     fill: var(--status);
@@ -303,7 +303,7 @@ const vars = {
   }
   .halo {
     fill: light-dark(transparent, var(--status));
-    opacity: 0.5;
+    opacity: 0.35;
     transition: opacity 0.25s;
   }
 
@@ -391,7 +391,7 @@ const vars = {
     opacity: 1;
   }
   .neuron[data-lit] .glow path.lit {
-    opacity: 0.9;
+    opacity: 0.75;
   }
   .neuron[data-filtered]:not([data-lit])
     :is(.branches path, .glow path, .node, .halo, .rows li):not(.kept) {
