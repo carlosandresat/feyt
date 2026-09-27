@@ -87,12 +87,38 @@ Rule: **data is written once**, in `topic.yaml` or in the `.es.md` file, and `en
 - `temas/[...key].astro` is a single catch-all route rendering any tree depth. Its `getStaticPaths = topicPaths`.
 - UI strings live in `src/i18n/ui.ts`. `en` is typed as `Record<keyof typeof es, string>`, so a missing key fails `astro check`. Use them through `t(locale)`.
 - Use the route helpers in `lib/i18n.ts` (`localizedPath`, `topicPath`, `switchLocale`) rather than hand-building URLs.
-- Dates: date-only YAML values are UTC midnight, so `formatDate` formats them in UTC. Datetimes (assemblies) are shown in `America/Guayaquil`.
-- `TopicTree.astro` renders recursively via `Astro.self`.
+- Dates: date-only YAML values are UTC midnight, so `formatDate` formats them in UTC. Datetimes (assemblies, events) are shown in `America/Guayaquil` (`formatDateRange`, `dateParts`). `Intl` output uses non-breaking spaces ("a. m."), so tests must match with `\s`.
+- Pages without a full-bleed layout get the `.page` width from `Base.astro`. Pass `wide` to manage width yourself, as the home hero does.
+
+## Design system: "bioluminescent neuron"
+
+The topic tree is a neuron. The soma is FEYT (or the current topic), dendrites are areas, and each issue is a terminal lit with its status color. The **dark theme ("abyss")** is bioluminescence in deep water. The **light theme ("slide")** is the same neuron as stained ink on a microscope slide, so it has no glow. The brand blues come from the FEYT logo (`#79AEC3`, `#3383AA`, `#195D78`). Don't embed the raster logo: it's the old AEYT one and isn't approved for the site yet.
+
+- **Tokens** live in `src/styles/global.css`. Every color is a `light-dark()` pair resolved from `color-scheme`, which follows the OS by default and is forced by `html[data-theme]` from the header toggle. An inline script in `Base.astro` applies a saved theme before first paint. `--glow` is `transparent` in light, so glow effects disappear there automatically. Use `light-dark(transparent, <color>)` for other dark-only effects.
+- **Status colors** (`--status-<status>`) are all WCAG AA on both backgrounds and surfaces. Status is never shown by color alone: it always comes with its label.
+- **Type:** Unbounded (`--font-display`) for headings and area names, Atkinson Hyperlegible Next (`--font-body`) for everything else. Both are self-hosted via the Astro Fonts API (`fonts` in `astro.config.mjs`, `<Font>` in `Base.astro`).
+- **Principles:**
+  - The neuron is the one bold element; everything else stays quiet.
+  - Light means information: only statuses and the path under interaction glow. No decorative gradients.
+  - Curves only appear in the tree, the breadcrumbs and the timeline axon.
+  - One orchestrated motion, the growth sequence on the home page. Everything else only reacts to the user. `prefers-reduced-motion` is honored globally.
+- **Avoid** dot-joined metadata strings ("A · B · C"), all-caps eyebrow labels, arrow-suffixed links and identical card grids. Use labeled facts (`Facts.astro`, `<dl>`) and chips instead.
+
+Key components:
+
+- `NeuronTree.astro` + `lib/neuron.ts`:
+  - The geometry is pure and tested: one row per node in pre-order, with depth as the indent and key-seeded curves, so the result is deterministic.
+  - The SVG is decorative (`aria-hidden`); the accessible content is the HTML list of links laid over it row by row.
+  - It renders a wide and a narrow drawing, switched with a container query. Both share `rowHeight`, so the HTML rows fit either one. The metrics reach the CSS through `define:vars`.
+  - Animations use `fill-mode: backwards`, never `forwards`, so they don't lock the opacity that hover and filter need afterwards.
+  - The filter dims instead of hiding, which keeps the geometry intact.
+- `Breadcrumbs.astro` draws the neuron path. `Timeline.astro` draws the axon, with a synapse per update lit in the status it set.
+- `ScheduleList.astro` is the date-led list for assemblies and events.
+- **Pagefind theming** (`Search.astro`): its components reset `color-scheme`, so the `--pf-*` color variables are registered with `@property` as `<color>`. That way `light-dark()` resolves on our container before Pagefind reads them.
 
 ### Search
 
-Pagefind (Component UI) indexes only elements marked `data-pagefind-body`, which are the topic and assembly articles. It builds one index per `<html lang>`. Filters come from `data-pagefind-filter="status"` and `data-pagefind-filter="area"` in `TopicPage.astro`. `/pagefind/` exists only after `pnpm build`, which is why `Search.astro` loads it with `is:inline`.
+Pagefind (Component UI) indexes only elements marked `data-pagefind-body`, which are the topic, assembly and event articles. It builds one index per `<html lang>`. Filters come from `data-pagefind-filter="status"` and `data-pagefind-filter="area"` in `TopicPage.astro`. `/pagefind/` exists only after `pnpm build`, which is why `Search.astro` loads it with `is:inline`.
 
 ### Deployment
 
