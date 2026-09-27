@@ -3,12 +3,13 @@ import { render } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import DocumentList from '../components/DocumentList.astro';
+import NeuronTree from '../components/NeuronTree.astro';
+import ScheduleList, { type ScheduleItem } from '../components/ScheduleList.astro';
 import StatusBadge from '../components/StatusBadge.astro';
 import Timeline from '../components/Timeline.astro';
-import TopicTree from '../components/TopicTree.astro';
 import TranslationNotice from '../components/TranslationNotice.astro';
-import { statusSummary } from '../lib/tree';
-import { STATUSES, type Locale } from '../lib/domain';
+import { descendants } from '../lib/tree';
+import type { Locale } from '../lib/domain';
 import { assemblyPath, eventPath, formatDate, t } from '../lib/i18n';
 import {
   getAncestors,
@@ -29,47 +30,90 @@ const _ = t(locale);
 
 const topic = await getTopic(topicKey);
 const ancestors = await getAncestors(topicKey);
-const assemblies = await getAssembliesForTopic(topicKey);
-const events = await getEventsForTopic(topicKey);
 const { entry, missingTranslation } = topicText(topic, locale);
 const { Content } = await render(entry);
-const summary = statusSummary(topic);
 const area = ancestors[0] ?? topic;
+
+const subIssues = descendants(topic).filter((d) => d.status).length;
+const plural = new Intl.PluralRules(locale);
+const subCaption = _(
+  plural.select(subIssues) === 'one' ? 'count.issues.one' : 'count.issues.other',
+).replace('{n}', String(subIssues));
+
+const related: ScheduleItem[] = [
+  ...(await getAssembliesForTopic(topicKey)).map((a) => {
+    const { data } = pickLocale(a.es, a.en, locale).entry;
+    return {
+      href: assemblyPath(locale, a.id),
+      title: data.title,
+      summary: data.summary,
+      date: a.date,
+      statusLabel: _(`assemblyStatus.${a.es.data.status}`),
+      tag: _('updateType.assembly'),
+    };
+  }),
+  ...(await getEventsForTopic(topicKey)).map((e) => {
+    const { data } = pickLocale(e.es, e.en, locale).entry;
+    return {
+      href: eventPath(locale, e.id),
+      title: data.title,
+      summary: data.summary,
+      date: e.date,
+      statusLabel: _(`eventStatus.${e.es.data.status}`),
+      tag: _(`eventCategory.${e.es.data.category}`),
+    };
+  }),
+].sort((a, b) => b.date.getTime() - a.date.getTime());
 ---
 
 <Base locale={locale} title={entry.data.title} description={entry.data.summary}>
   <Breadcrumbs locale={locale} ancestors={ancestors} current={entry.data.title} />
 
   <article data-pagefind-body>
-    <h1 data-pagefind-meta="title">{entry.data.title}</h1>
-    <span hidden data-pagefind-filter="area">
-      {topicTitle(area, locale)}
-    </span>
-    {topic.status && (
-      <p>
-        <span data-pagefind-filter="status">
-          <StatusBadge status={topic.status} locale={locale} />
-        </span>{' '}
-        <span class="muted">
-          {_('topic.priority')}: {_(`priority.${topic.data.priority}`)} · {_('topic.updatedAt')}:{' '}
-          {formatDate(topic.updatedAt, locale)}
-        </span>
-      </p>
-    )}
-    <p class="summary">{entry.data.summary}</p>
+    <header class="topic-header">
+      <h1 data-pagefind-meta="title">{entry.data.title}</h1>
+      <span hidden data-pagefind-filter="area">
+        {topicTitle(area, locale)}
+      </span>
+      <p class="summary">{entry.data.summary}</p>
+      {topic.status && (
+        <dl class="facts">
+          <div>
+            <dt>{_('topic.status')}</dt>
+            <dd data-pagefind-filter="status">
+              <StatusBadge status={topic.status} locale={locale} />
+            </dd>
+          </div>
+          <div>
+            <dt>{_('topic.priority')}</dt>
+            <dd>{_(`priority.${topic.data.priority}`)}</dd>
+          </div>
+          <div>
+            <dt>{_('topic.updatedAt')}</dt>
+            <dd>
+              <time datetime={topic.updatedAt.toISOString()}>
+                {formatDate(topic.updatedAt, locale)}
+              </time>
+            </dd>
+          </div>
+        </dl>
+      )}
+    </header>
+
     {missingTranslation && <TranslationNotice locale={locale} />}
-    <Content />
+    <div class="prose">
+      <Content />
+    </div>
 
     {topic.children.length > 0 && (
       <section>
         <h2>{_('topic.subtopics')}</h2>
-        <p class="muted">
-          {_('topic.subtopicStatus')}:{' '}
-          {STATUSES.filter((s) => summary[s])
-            .map((s) => `${_(`status.${s}`)} (${summary[s]})`)
-            .join(' · ')}
-        </p>
-        <TopicTree nodes={topic.children} locale={locale} withSummary />
+        <NeuronTree
+          id={`topic-${topic.key.replaceAll('/', '-')}`}
+          locale={locale}
+          nodes={topic.children}
+          soma={{ title: entry.data.title, caption: subCaption }}
+        />
       </section>
     )}
 
@@ -79,41 +123,36 @@ const area = ancestors[0] ?? topic;
 
     <DocumentList documents={topic.data.documents} links={topic.data.links} locale={locale} />
 
-    {assemblies.length > 0 && (
+    {related.length > 0 && (
       <section>
-        <h2>{_('topic.assemblies')}</h2>
-        <ul>
-          {assemblies.map((a) => (
-            <li>
-              <a href={assemblyPath(locale, a.id)}>
-                {pickLocale(a.es, a.en, locale).entry.data.title}
-              </a>{' '}
-              <span class="muted">· {formatDate(a.date, locale)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
-    {events.length > 0 && (
-      <section>
-        <h2>{_('topic.events')}</h2>
-        <ul>
-          {events.map((e) => (
-            <li>
-              <a href={eventPath(locale, e.id)}>
-                {pickLocale(e.es, e.en, locale).entry.data.title}
-              </a>{' '}
-              <span class="muted">({formatDate(e.date, locale)})</span>
-            </li>
-          ))}
-        </ul>
+        <h2>{_('topic.relatedSchedule')}</h2>
+        <ScheduleList items={related} locale={locale} />
       </section>
     )}
   </article>
 </Base>
 
 <style>
+  .topic-header {
+    margin-bottom: 1.5rem;
+  }
   .summary {
-    font-size: 1.1rem;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2.5rem;
+    margin: 1.25rem 0 0;
+  }
+  dt {
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  dd {
+    margin: 0.15rem 0 0;
+    font-weight: 600;
   }
 </style>

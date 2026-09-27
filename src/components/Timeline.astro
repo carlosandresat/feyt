@@ -1,4 +1,6 @@
 ---
+// A topic's history drawn as an axon: one vertical fiber with a synapse per update. Updates that
+// changed the status light their synapse with the new status color.
 import { render } from 'astro:content';
 import type { Locale } from '../lib/domain';
 import { formatDate, t } from '../lib/i18n';
@@ -26,61 +28,101 @@ const items = await Promise.all(
 <section>
   <h2>{_('topic.timeline')}</h2>
   {items.length === 0 && <p class="muted">{_('topic.noUpdates')}</p>}
-  <ol class="timeline">
-    {items.map(({ update, title, missingTranslation, Content }) => (
-      <li>
-        <p class="meta muted">
-          <time datetime={update.date.toISOString()}>{formatDate(update.date, locale)}</time>
-          {` · ${_(`updateType.${update.es.data.type}`)}`}
-          {missingTranslation && ' · ES'}
-        </p>
-        <h3>{title}</h3>
-        {update.es.data.status && (
-          <p class="status-change">
-            {_('topic.statusChangedTo')}{' '}
-            <StatusBadge status={update.es.data.status} locale={locale} />
+  <ol class="axon">
+    {items.map(({ update, title, missingTranslation, Content }) => {
+      const status = update.es.data.status;
+      return (
+        <li style={status ? `--status: var(--status-${status})` : undefined}>
+          <span class:list={['synapse', { changed: status }]} aria-hidden="true" />
+          <p class="meta">
+            <time datetime={update.date.toISOString()}>{formatDate(update.date, locale)}</time>
+            <span class="type">{_(`updateType.${update.es.data.type}`)}</span>
+            {missingTranslation && (
+              <span class="type" title={_('translation.missing')}>
+                ES
+              </span>
+            )}
           </p>
-        )}
-        <Content />
-        <DocumentList
-          documents={update.es.data.documents}
-          links={update.es.data.links}
-          locale={locale}
-        />
-      </li>
-    ))}
+          <h3>{title}</h3>
+          {status && (
+            <p class="status-change">
+              {_('topic.statusChangedTo')} <StatusBadge status={status} locale={locale} />
+            </p>
+          )}
+          <div class="body">
+            <Content />
+          </div>
+          <DocumentList
+            documents={update.es.data.documents}
+            links={update.es.data.links}
+            locale={locale}
+            compact
+          />
+        </li>
+      );
+    })}
   </ol>
 </section>
 
 <style>
-  .timeline {
-    list-style: none;
-    padding-left: 1rem;
-    border-left: 2px solid var(--border);
-  }
-  .timeline > li {
+  .axon {
     position: relative;
-    margin-bottom: 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 1.75rem;
   }
-  .timeline > li::before {
+  /* The fiber: fades out at the oldest end. */
+  .axon::before {
     content: '';
     position: absolute;
-    left: -1.42rem;
-    top: 0.4rem;
-    width: 0.7rem;
-    height: 0.7rem;
-    border-radius: 50%;
-    background: var(--accent);
+    left: 0.45rem;
+    top: 0.5rem;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(var(--branch), transparent);
+    box-shadow: 0 0 0.6rem var(--glow);
   }
-  .meta,
-  .status-change {
-    margin: 0;
-    font-size: 0.9rem;
+  .axon > li {
+    position: relative;
+    padding-bottom: 2rem;
+  }
+  .synapse {
+    position: absolute;
+    left: -1.62rem;
+    top: 0.3rem;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    border: 2px solid var(--branch);
+    background: var(--bg);
+  }
+  .synapse.changed {
+    border-color: var(--status);
+    background: var(--status);
+    box-shadow: 0 0 0.7rem light-dark(transparent, var(--status));
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.25rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  .type {
+    padding: 0 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
   }
   h3 {
-    margin: 0.1rem 0 0.3rem;
+    margin: 0 0 0.4rem;
   }
-  li :global(h2) {
-    font-size: 1rem;
+  .status-change {
+    margin: 0 0 0.5rem;
+    font-size: var(--step--1);
+  }
+  .body :global(p:last-child) {
+    margin-bottom: 0;
   }
 </style>

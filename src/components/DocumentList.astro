@@ -8,41 +8,73 @@ interface Props {
   documents: TopicData['documents'];
   links: TopicData['links'];
   locale: Locale;
+  /** Inside a timeline entry: no section headings, tighter spacing. */
+  compact?: boolean;
 }
-const { documents, links, locale } = Astro.props;
+const { documents, links, locale, compact = false } = Astro.props;
 const _ = t(locale);
+const Heading = compact ? 'h4' : 'h2';
 ---
 
 {documents.length > 0 && (
-  <section>
-    <h2>{_('topic.documents')}</h2>
+  <section class:list={{ compact }}>
+    <Heading class:list={{ 'sr-only': compact }}>{_('topic.documents')}</Heading>
     <ul>
       {documents.map((d) => (
         <li>
+          <span class="kind">{_(`documentType.${d.type}`)}</span>
           <a href={d.file ?? d.url} target={d.url ? '_blank' : undefined} rel="noopener">
             {d.title}
-          </a>{' '}
-          <span class="muted">
-            · {_(`documentType.${d.type}`)}
-            {d.date && ` · ${formatDate(d.date, locale)}`}
-          </span>
+          </a>
+          {d.date && (
+            <time class="muted" datetime={d.date.toISOString()}>
+              {formatDate(d.date, locale)}
+            </time>
+          )}
         </li>
       ))}
     </ul>
   </section>
 )}
 {links.length > 0 && (
-  <section>
-    <h2>{_('topic.links')}</h2>
+  <section class:list={{ compact }}>
+    <Heading class:list={{ 'sr-only': compact }}>{_('topic.links')}</Heading>
     <ul>
       {links.map((l) => (
         <li>
+          <span class="kind">{_(`platform.${l.platform}`)}</span>
           <a href={l.url} target="_blank" rel="noopener">
             {l.title ?? l.url}
-          </a>{' '}
-          <span class="muted">· {l.platform}</span>
+          </a>
         </li>
       ))}
     </ul>
   </section>
 )}
+
+<style>
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .compact ul {
+    margin-top: 0.6rem;
+  }
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.6rem;
+  }
+  .kind {
+    min-width: 6.5rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  time {
+    font-size: var(--step--1);
+  }
+</style>
