@@ -346,10 +346,14 @@ const vars = {
     min-width: 0;
     transition: opacity 0.25s;
   }
+  /* Up to two lines before truncating; the row fits two title lines plus the status line. */
   .title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    line-height: 1.25;
     color: var(--text);
     font-weight: 600;
     text-decoration: none;
