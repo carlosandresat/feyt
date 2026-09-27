@@ -25,6 +25,7 @@ Field names and values (`status: in-progress`) are in English, because they're c
 - **Topic key**: its folder path, e.g. `residencias/internet`. It's also its URL: `/temas/residencias/internet/`.
 - **Update**: a dated entry in a topic's timeline (meeting, letter, response, assembly, note).
 - **Assembly**: an announced or held assembly, linked to the topics it covered.
+- **Event**: an activity organized or shared by FEYT (academic, cultural, sports, workshop, volunteering, social). Events live outside the tree, but can link to related topics.
 - **Data vs. text**: data (status, dates, documents) is written **once**, in `topic.yaml` or in the `.es.md` file. English files **only translate text**. Spanish is required and English is optional; when English is missing, the Spanish text is shown with a notice.
 
 ## Creating a topic or subtopic
@@ -126,6 +127,37 @@ links:
 ---
 
 Agenda. After the assembly, set `status: held` and add the agreements or the minutes.
+```
+
+Optional translation: `YYYY-MM-DD-name.en.md`, with `title`, `summary` and the body.
+
+## Recording an event or activity
+
+Create `src/content/events/YYYY-MM-DD-name.es.md`:
+
+```markdown
+---
+title: Minga de limpieza en las residencias
+summary: Una frase que explique la actividad.
+# academic | cultural | sports | workshop | volunteering | social | other
+category: volunteering
+# start, with time and Ecuador's time zone
+date: 2026-10-15T09:00:00-05:00
+# optional end (same day or later)
+endDate: 2026-10-15T13:00:00-05:00
+place: Residencias, bloque B
+# in-person | online | hybrid
+format: in-person
+# scheduled | held | cancelled
+status: scheduled
+# optional: sign-up form (the button only shows while the event is scheduled)
+registrationUrl: https://forms.gle/XXXX
+# optional: keys of related topics
+topics:
+  - residencias/internet/bloque-b
+---
+
+Details: what to bring, who it's for, schedule.
 ```
 
 Optional translation: `YYYY-MM-DD-name.en.md`, with `title`, `summary` and the body.

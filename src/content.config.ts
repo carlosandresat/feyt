@@ -2,11 +2,12 @@ import { defineCollection, reference } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
 import {
-  ASSEMBLY_FORMATS,
-  ASSEMBLY_STATUSES,
   DOCUMENT_TYPES,
+  EVENT_CATEGORIES,
+  FORMATS,
   PLATFORMS,
   PRIORITIES,
+  SCHEDULE_STATUSES,
   STATUSES,
   UPDATE_TYPES,
 } from './lib/domain';
@@ -42,6 +43,7 @@ const link = z.object({
 
 const TOPICS_BASE = './src/content/topics';
 const ASSEMBLIES_BASE = './src/content/assemblies';
+const EVENTS_BASE = './src/content/events';
 
 /** Language-neutral data of each tree node. id = folder path. */
 const topics = defineCollection({
@@ -119,8 +121,8 @@ const assemblies = defineCollection({
     /** Include time and Ecuador's offset, e.g. 2026-09-15T18:00:00-05:00 */
     date: z.coerce.date(),
     place: z.string(),
-    format: z.enum(ASSEMBLY_FORMATS),
-    status: z.enum(ASSEMBLY_STATUSES),
+    format: z.enum(FORMATS),
+    status: z.enum(SCHEDULE_STATUSES),
     /** Keys of the topics discussed. `reference()` fails the build if a key doesn't exist. */
     topics: z.array(reference('topics')).default([]),
     documents: z.array(document).default([]),
@@ -141,4 +143,53 @@ const assembliesEn = defineCollection({
   }),
 });
 
-export const collections = { topics, topicTexts, updates, updatesEn, assemblies, assembliesEn };
+/** Events and activities in Spanish: the source of the data. Separate from the topic tree. */
+const events = defineCollection({
+  loader: glob({
+    pattern: '*.es.md',
+    base: EVENTS_BASE,
+    generateId: ({ entry }) => stripExtension(entry, /\.es\.md$/),
+  }),
+  schema: z.object({
+    title: z.string(),
+    summary: z.string(),
+    category: z.enum(EVENT_CATEGORIES),
+    /** Start, with time and Ecuador's offset, e.g. 2026-10-15T16:00:00-05:00 */
+    date: z.coerce.date(),
+    /** Optional end, for multi-hour or multi-day events. */
+    endDate: z.coerce.date().optional(),
+    place: z.string(),
+    format: z.enum(FORMATS),
+    status: z.enum(SCHEDULE_STATUSES),
+    /** Sign-up form, if the event needs registration. */
+    registrationUrl: z.url().optional(),
+    /** Optional: topics this activity relates to (e.g. a clean-up day for a residences issue). */
+    topics: z.array(reference('topics')).default([]),
+    documents: z.array(document).default([]),
+    links: z.array(link).default([]),
+  }),
+});
+
+/** Optional translation of an event. Same id as its Spanish version. */
+const eventsEn = defineCollection({
+  loader: glob({
+    pattern: '*.en.md',
+    base: EVENTS_BASE,
+    generateId: ({ entry }) => stripExtension(entry, /\.en\.md$/),
+  }),
+  schema: z.object({
+    title: z.string(),
+    summary: z.string(),
+  }),
+});
+
+export const collections = {
+  topics,
+  topicTexts,
+  updates,
+  updatesEn,
+  assemblies,
+  assembliesEn,
+  events,
+  eventsEn,
+};

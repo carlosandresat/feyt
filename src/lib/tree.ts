@@ -77,6 +77,9 @@ export interface ValidationInput {
   assemblies: { id: string; files: string[] }[];
   /** assembliesEn ids */
   assembliesEn: string[];
+  events: { id: string; date: Date; endDate?: Date; files: string[] }[];
+  /** eventsEn ids */
+  eventsEn: string[];
   /** Takes a public path (e.g. /docs/x.pdf) and tells whether the file exists in public/. */
   fileExists: (path: string) => boolean;
 }
@@ -130,6 +133,15 @@ export function validateContent(input: ValidationInput): string[] {
   for (const id of input.assembliesEn) {
     if (!assemblyIds.has(id)) errors.push(`Assembly "${id}.en.md" has no matching ".es.md".`);
   }
+  const eventIds = new Set(input.events.map((e) => e.id));
+  for (const id of input.eventsEn) {
+    if (!eventIds.has(id)) errors.push(`Event "${id}.en.md" has no matching ".es.md".`);
+  }
+  for (const event of input.events) {
+    if (event.endDate && event.endDate < event.date) {
+      errors.push(`Event "${event.id}": endDate is before date.`);
+    }
+  }
 
   // topic.yaml's status must match the latest update that recorded a status change.
   for (const topic of input.topics) {
@@ -146,6 +158,7 @@ export function validateContent(input: ValidationInput): string[] {
     ...input.topics.map((t) => ({ source: `topic "${t.key}"`, files: t.files })),
     ...input.updates.map((u) => ({ source: `update "${u.id}"`, files: u.files })),
     ...input.assemblies.map((a) => ({ source: `assembly "${a.id}"`, files: a.files })),
+    ...input.events.map((e) => ({ source: `event "${e.id}"`, files: e.files })),
   ];
   for (const { source, files } of withFiles) {
     for (const file of files) {

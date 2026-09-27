@@ -33,6 +33,7 @@ export function switchLocale(pathname: string, target: Locale): string {
 export const topicPath = (locale: Locale, key: string) => localizedPath(locale, `/temas/${key}/`);
 export const assemblyPath = (locale: Locale, id: string) =>
   localizedPath(locale, `/asambleas/${id}/`);
+export const eventPath = (locale: Locale, id: string) => localizedPath(locale, `/eventos/${id}/`);
 
 const INTL_LOCALE: Record<Locale, string> = { es: 'es-EC', en: 'en-US' };
 
@@ -45,4 +46,31 @@ export function formatDate(date: Date, locale: Locale, withTime = false): string
     dateStyle: 'long',
     ...(withTime ? { timeStyle: 'short', timeZone: 'America/Guayaquil' } : { timeZone: 'UTC' }),
   }).format(date);
+}
+
+const EVENT_TIME_ZONE = 'America/Guayaquil';
+
+/** "15 de octubre de 2026, 16:00–18:00" or a multi-day range; a single datetime without `end`. */
+export function formatDateRange(start: Date, end: Date | undefined, locale: Locale): string {
+  const format = new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: EVENT_TIME_ZONE,
+  });
+  return end ? format.formatRange(start, end) : format.format(start);
+}
+
+/** Pieces of a datetime (in Ecuador's time zone) for calendar-style date blocks. */
+export function dateParts(date: Date, locale: Locale) {
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(INTL_LOCALE[locale], { ...options, timeZone: EVENT_TIME_ZONE }).format(
+      date,
+    );
+  return {
+    day: part({ day: 'numeric' }),
+    // Some locales abbreviate with a trailing period ("sept."); the block doesn't need it.
+    month: part({ month: 'short' }).replace(/\.$/, ''),
+    year: part({ year: 'numeric' }),
+    time: part({ hour: 'numeric', minute: '2-digit' }),
+  };
 }

@@ -1,9 +1,17 @@
 ---
 import Base from '../layouts/Base.astro';
+import ScheduleList from '../components/ScheduleList.astro';
 import TopicTree from '../components/TopicTree.astro';
 import type { Locale } from '../lib/domain';
-import { assemblyPath, formatDate, topicPath, t } from '../lib/i18n';
-import { getRecentUpdates, getTopic, loadContent, pickLocale, topicTitle } from '../lib/content';
+import { assemblyPath, eventPath, formatDate, topicPath, t } from '../lib/i18n';
+import {
+  getRecentUpdates,
+  getTopic,
+  loadContent,
+  pickLocale,
+  topicTitle,
+  upcoming,
+} from '../lib/content';
 
 interface Props {
   locale: Locale;
@@ -11,11 +19,33 @@ interface Props {
 const { locale } = Astro.props;
 const _ = t(locale);
 
-const { tree, assemblies } = await loadContent();
+const { tree, assemblies, events } = await loadContent();
 const recent = await Promise.all(
   (await getRecentUpdates(5)).map(async (u) => ({ update: u, topic: await getTopic(u.key) })),
 );
-const upcoming = assemblies.filter((a) => a.es.data.status === 'scheduled').reverse();
+const nextAssemblies = upcoming(assemblies).map((a) => {
+  const { data } = pickLocale(a.es, a.en, locale).entry;
+  return {
+    href: assemblyPath(locale, a.id),
+    title: data.title,
+    summary: data.summary,
+    date: a.date,
+    statusLabel: _(`assemblyStatus.${a.es.data.status}`),
+  };
+});
+const nextEvents = upcoming(events)
+  .slice(0, 3)
+  .map((e) => {
+    const { data } = pickLocale(e.es, e.en, locale).entry;
+    return {
+      href: eventPath(locale, e.id),
+      title: data.title,
+      summary: data.summary,
+      date: e.date,
+      statusLabel: _(`eventStatus.${e.es.data.status}`),
+      tag: _(`eventCategory.${e.es.data.category}`),
+    };
+  });
 ---
 
 <Base locale={locale}>
@@ -29,17 +59,14 @@ const upcoming = assemblies.filter((a) => a.es.data.status === 'scheduled').reve
 
   <section>
     <h2>{_('home.upcomingAssemblies')}</h2>
-    {upcoming.length === 0 && <p class="muted">{_('home.noAssemblies')}</p>}
-    <ul>
-      {upcoming.map((a) => (
-        <li>
-          <a href={assemblyPath(locale, a.id)}>{pickLocale(a.es, a.en, locale).entry.data.title}</a>{' '}
-          <span class="muted">
-            · {formatDate(a.date, locale, true)} · {a.es.data.place}
-          </span>
-        </li>
-      ))}
-    </ul>
+    {nextAssemblies.length === 0 && <p class="muted">{_('home.noAssemblies')}</p>}
+    <ScheduleList items={nextAssemblies} locale={locale} />
+  </section>
+
+  <section>
+    <h2>{_('home.upcomingEvents')}</h2>
+    {nextEvents.length === 0 && <p class="muted">{_('home.noEvents')}</p>}
+    <ScheduleList items={nextEvents} locale={locale} />
   </section>
 
   <section>
@@ -49,7 +76,7 @@ const upcoming = assemblies.filter((a) => a.es.data.status === 'scheduled').reve
         <li>
           <a href={topicPath(locale, topic.key)}>{topicTitle(topic, locale)}</a>:{' '}
           {pickLocale(update.es, update.en, locale).entry.data.title}{' '}
-          <span class="muted">· {formatDate(update.date, locale)}</span>
+          <span class="muted">({formatDate(update.date, locale)})</span>
         </li>
       ))}
     </ul>

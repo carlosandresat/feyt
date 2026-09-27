@@ -1,0 +1,123 @@
+---
+import { render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import DocumentList from '../components/DocumentList.astro';
+import TranslationNotice from '../components/TranslationNotice.astro';
+import type { Locale } from '../lib/domain';
+import { formatDateRange, localizedPath, topicPath, t } from '../lib/i18n';
+import { getTopic, loadContent, pickLocale, topicTitle } from '../lib/content';
+
+interface Props {
+  id: string;
+  locale: Locale;
+}
+const { id, locale } = Astro.props;
+const _ = t(locale);
+
+const event = (await loadContent()).events.find((e) => e.id === id)!;
+const { entry, missingTranslation } = pickLocale(event.es, event.en, locale);
+const { Content } = await render(entry);
+const data = event.es.data;
+const topics = await Promise.all(event.topicKeys.map(getTopic));
+const canRegister = data.registrationUrl && data.status === 'scheduled';
+---
+
+<Base locale={locale} title={entry.data.title} description={entry.data.summary}>
+  <p>
+    <a href={localizedPath(locale, '/eventos/')}>{_('events.title')}</a>
+  </p>
+  <article data-pagefind-body>
+    <p class="category">{_(`eventCategory.${data.category}`)}</p>
+    <h1 data-pagefind-meta="title">{entry.data.title}</h1>
+    <p class="summary">{entry.data.summary}</p>
+
+    <dl class="facts">
+      <div>
+        <dt>{_('event.when')}</dt>
+        <dd>
+          <time datetime={event.date.toISOString()}>
+            {formatDateRange(event.date, data.endDate, locale)}
+          </time>
+        </dd>
+      </div>
+      <div>
+        <dt>{_('event.place')}</dt>
+        <dd>{data.place}</dd>
+      </div>
+      <div>
+        <dt>{_('event.format')}</dt>
+        <dd>{_(`format.${data.format}`)}</dd>
+      </div>
+      <div>
+        <dt>{_('topic.status')}</dt>
+        <dd>{_(`eventStatus.${data.status}`)}</dd>
+      </div>
+    </dl>
+
+    {canRegister && (
+      <p>
+        <a class="register" href={data.registrationUrl} target="_blank" rel="noopener">
+          {_('event.register')}
+        </a>
+      </p>
+    )}
+
+    {missingTranslation && <TranslationNotice locale={locale} />}
+    <Content />
+
+    {topics.length > 0 && (
+      <section>
+        <h2>{_('event.topics')}</h2>
+        <ul>
+          {topics.map((topic) => (
+            <li>
+              <a href={topicPath(locale, topic.key)}>{topicTitle(topic, locale)}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+    <DocumentList documents={data.documents} links={data.links} locale={locale} />
+  </article>
+</Base>
+
+<style>
+  .category {
+    margin: 1.5rem 0 0.25rem;
+    color: var(--brand);
+    font-weight: 600;
+  }
+  .summary {
+    font-size: var(--step-1);
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem 2rem;
+    margin: 1.5rem 0;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+  }
+  dt {
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  dd {
+    margin: 0;
+    font-weight: 600;
+  }
+  .register {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    border-radius: 999px;
+    background: var(--brand);
+    color: var(--bg);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .register:hover {
+    background: var(--accent);
+  }
+</style>

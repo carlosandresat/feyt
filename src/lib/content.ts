@@ -44,25 +44,38 @@ export interface Assembly {
   topicKeys: string[];
 }
 
+export interface CampusEvent {
+  id: string;
+  date: Date;
+  es: CollectionEntry<'events'>;
+  en?: CollectionEntry<'eventsEn'>;
+  topicKeys: string[];
+}
+
 interface Content {
   tree: Topic[];
   topics: Map<string, Topic>;
   /** Newest first. */
   assemblies: Assembly[];
+  /** Newest first. */
+  events: CampusEvent[];
 }
 
 const filesOf = (documents: { file?: string }[]) =>
   documents.flatMap((d) => (d.file ? [d.file] : []));
 
 async function load(): Promise<Content> {
-  const [topics, texts, updates, updatesEn, assemblies, assembliesEn] = await Promise.all([
-    getCollection('topics'),
-    getCollection('topicTexts'),
-    getCollection('updates'),
-    getCollection('updatesEn'),
-    getCollection('assemblies'),
-    getCollection('assembliesEn'),
-  ]);
+  const [topics, texts, updates, updatesEn, assemblies, assembliesEn, events, eventsEn] =
+    await Promise.all([
+      getCollection('topics'),
+      getCollection('topicTexts'),
+      getCollection('updates'),
+      getCollection('updatesEn'),
+      getCollection('assemblies'),
+      getCollection('assembliesEn'),
+      getCollection('events'),
+      getCollection('eventsEn'),
+    ]);
 
   const errors = validateContent({
     topics: topics.map((t) => ({
@@ -80,6 +93,13 @@ async function load(): Promise<Content> {
     updatesEn: updatesEn.map((u) => u.id),
     assemblies: assemblies.map((a) => ({ id: a.id, files: filesOf(a.data.documents) })),
     assembliesEn: assembliesEn.map((a) => a.id),
+    events: events.map((e) => ({
+      id: e.id,
+      date: e.data.date,
+      endDate: e.data.endDate,
+      files: filesOf(e.data.documents),
+    })),
+    eventsEn: eventsEn.map((e) => e.id),
     fileExists: (path) => existsSync(join(process.cwd(), 'public', path)),
   });
   if (errors.length > 0) {
@@ -134,7 +154,18 @@ async function load(): Promise<Content> {
     })),
   );
 
-  return { tree, topics: index, assemblies: assemblyList };
+  const eventsEnById = new Map(eventsEn.map((e) => [e.id, e]));
+  const eventList = sortByDateDesc(
+    events.map((es): CampusEvent => ({
+      id: es.id,
+      date: es.data.date,
+      es,
+      en: eventsEnById.get(es.id),
+      topicKeys: es.data.topics.map((r) => r.id),
+    })),
+  );
+
+  return { tree, topics: index, assemblies: assemblyList, events: eventList };
 }
 
 let cache: Promise<Content> | undefined;
@@ -155,6 +186,11 @@ export async function assemblyPaths() {
   return assemblies.map((a) => ({ params: { id: a.id } }));
 }
 
+export async function eventPaths() {
+  const { events } = await loadContent();
+  return events.map((e) => ({ params: { id: e.id } }));
+}
+
 export async function getTopic(key: string): Promise<Topic> {
   const topic = (await loadContent()).topics.get(key);
   if (!topic) throw new Error(`Topic "${key}" doesn't exist`);
@@ -168,6 +204,20 @@ export async function getAncestors(key: string): Promise<Topic[]> {
 
 export async function getAssembliesForTopic(key: string): Promise<Assembly[]> {
   return (await loadContent()).assemblies.filter((a) => a.topicKeys.includes(key));
+}
+
+export async function getEventsForTopic(key: string): Promise<CampusEvent[]> {
+  return (await loadContent()).events.filter((e) => e.topicKeys.includes(key));
+}
+
+/** Scheduled items (assemblies or events), soonest first. */
+export function upcoming<T extends { es: { data: { status: string } } }>(items: T[]): T[] {
+  return items.filter((i) => i.es.data.status === 'scheduled').reverse();
+}
+
+/** Held or cancelled items, newest first. */
+export function past<T extends { es: { data: { status: string } } }>(items: T[]): T[] {
+  return items.filter((i) => i.es.data.status !== 'scheduled');
 }
 
 export async function getRecentUpdates(limit: number): Promise<Update[]> {

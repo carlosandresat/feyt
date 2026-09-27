@@ -30,11 +30,22 @@ export const DOCUMENT_TYPES = [
 ] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
-export const ASSEMBLY_STATUSES = ['scheduled', 'held', 'cancelled'] as const;
-export type AssemblyStatus = (typeof ASSEMBLY_STATUSES)[number];
+export const SCHEDULE_STATUSES = ['scheduled', 'held', 'cancelled'] as const;
+export type ScheduleStatus = (typeof SCHEDULE_STATUSES)[number];
 
-export const ASSEMBLY_FORMATS = ['in-person', 'online', 'hybrid'] as const;
-export type AssemblyFormat = (typeof ASSEMBLY_FORMATS)[number];
+export const FORMATS = ['in-person', 'online', 'hybrid'] as const;
+export type Format = (typeof FORMATS)[number];
+
+export const EVENT_CATEGORIES = [
+  'academic',
+  'cultural',
+  'sports',
+  'workshop',
+  'volunteering',
+  'social',
+  'other',
+] as const;
+export type EventCategory = (typeof EVENT_CATEGORIES)[number];
 
 export const PLATFORMS = [
   'instagram',

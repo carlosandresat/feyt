@@ -9,10 +9,11 @@ import TopicTree from '../components/TopicTree.astro';
 import TranslationNotice from '../components/TranslationNotice.astro';
 import { statusSummary } from '../lib/tree';
 import { STATUSES, type Locale } from '../lib/domain';
-import { assemblyPath, formatDate, t } from '../lib/i18n';
+import { assemblyPath, eventPath, formatDate, t } from '../lib/i18n';
 import {
   getAncestors,
   getAssembliesForTopic,
+  getEventsForTopic,
   getTopic,
   pickLocale,
   topicText,
@@ -29,6 +30,7 @@ const _ = t(locale);
 const topic = await getTopic(topicKey);
 const ancestors = await getAncestors(topicKey);
 const assemblies = await getAssembliesForTopic(topicKey);
+const events = await getEventsForTopic(topicKey);
 const { entry, missingTranslation } = topicText(topic, locale);
 const { Content } = await render(entry);
 const summary = statusSummary(topic);
@@ -87,6 +89,21 @@ const area = ancestors[0] ?? topic;
                 {pickLocale(a.es, a.en, locale).entry.data.title}
               </a>{' '}
               <span class="muted">· {formatDate(a.date, locale)}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+    {events.length > 0 && (
+      <section>
+        <h2>{_('topic.events')}</h2>
+        <ul>
+          {events.map((e) => (
+            <li>
+              <a href={eventPath(locale, e.id)}>
+                {pickLocale(e.es, e.en, locale).entry.data.title}
+              </a>{' '}
+              <span class="muted">({formatDate(e.date, locale)})</span>
             </li>
           ))}
         </ul>

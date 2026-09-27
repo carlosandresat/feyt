@@ -69,6 +69,8 @@ describe('validateContent', () => {
     updatesEn: ['res/internet/updates/2'],
     assemblies: [{ id: 'a1', files: [] }],
     assembliesEn: ['a1'],
+    events: [{ id: 'e1', date: new Date('2026-10-15T16:00:00-05:00'), files: [] }],
+    eventsEn: ['e1'],
     fileExists: () => true,
   });
 
@@ -101,8 +103,15 @@ describe('validateContent', () => {
     const input = base();
     input.updatesEn.push('res/internet/updates/99');
     input.assembliesEn.push('a2');
+    input.eventsEn.push('e2');
     input.updates.push({ id: 'other/updates/1', date: new Date(), files: [] });
-    expect(validateContent(input)).toHaveLength(3);
+    expect(validateContent(input)).toHaveLength(4);
+  });
+
+  it('detects events that end before they start', () => {
+    const input = base();
+    input.events[0].endDate = new Date('2026-10-15T15:00:00-05:00');
+    expect(validateContent(input)).toEqual([expect.stringContaining('endDate is before date')]);
   });
 
   it('detects documents missing from public/', () => {

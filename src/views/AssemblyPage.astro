@@ -30,8 +30,7 @@ const topics = await Promise.all(assembly.topicKeys.map(getTopic));
     <p class="muted">
       {formatDate(assembly.date, locale, true)} · {_(`assemblyStatus.${data.status}`)}
       <br />
-      {_('assembly.place')}: {data.place} · {_('assembly.format')}:{' '}
-      {_(`assemblyFormat.${data.format}`)}
+      {_('assembly.place')}: {data.place} · {_('assembly.format')}: {_(`format.${data.format}`)}
     </p>
     <p>{entry.data.summary}</p>
     {missingTranslation && <TranslationNotice locale={locale} />}

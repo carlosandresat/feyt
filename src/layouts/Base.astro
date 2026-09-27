@@ -19,6 +19,7 @@ const fullTitle = title ? `${title} | FEYT` : _('site.name');
 const nav = [
   { href: localizedPath(locale, '/temas/'), label: _('nav.topics') },
   { href: localizedPath(locale, '/asambleas/'), label: _('nav.assemblies') },
+  { href: localizedPath(locale, '/eventos/'), label: _('nav.events') },
   { href: localizedPath(locale, '/buscar/'), label: _('nav.search') },
 ];
 const otherLocalePath = switchLocale(Astro.url.pathname, otherLocale);

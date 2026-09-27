@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, localeFromPath, localizedPath, switchLocale, topicPath } from './i18n';
+import {
+  dateParts,
+  formatDate,
+  formatDateRange,
+  localeFromPath,
+  localizedPath,
+  switchLocale,
+  topicPath,
+} from './i18n';
 
 describe('localized paths', () => {
   it('leaves Spanish unprefixed and prefixes English', () => {
@@ -26,5 +34,27 @@ describe('formatDate', () => {
 
   it("shows Ecuador's local time for datetimes", () => {
     expect(formatDate(new Date('2026-09-15T18:00:00-05:00'), 'en', true)).toMatch(/6:00\sPM/);
+  });
+});
+
+describe('formatDateRange and dateParts', () => {
+  const start = new Date('2026-10-15T16:00:00-05:00');
+
+  it('collapses same-day ranges into one date with a time range', () => {
+    const text = formatDateRange(start, new Date('2026-10-15T18:00:00-05:00'), 'es');
+    expect(text.match(/2026/g)).toHaveLength(1);
+    expect(text).toContain('15 de octubre');
+  });
+
+  it('formats a single datetime when there is no end', () => {
+    expect(formatDateRange(start, undefined, 'en')).toMatch(/October 15, 2026.*4:00\sPM/);
+  });
+
+  it("splits a datetime into parts in Ecuador's time zone", () => {
+    expect(dateParts(start, 'es')).toMatchObject({ day: '15', month: 'oct', year: '2026' });
+    // Intl separates "a. m." with non-breaking spaces, hence \s.
+    const morning = dateParts(new Date('2026-09-05T09:00:00-05:00'), 'es');
+    expect(morning.month).toBe('sept');
+    expect(morning.time).toMatch(/^9:00\sa\.\sm\.$/);
   });
 });

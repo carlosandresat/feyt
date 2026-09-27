@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Static site for FEYT (Federación de Estudiantes Yachay Tech) that tracks student issues as a navigable tree of any depth (e.g. Residencias → Internet → Bloque B). Each issue shows its status, a timeline of updates, documents and linked assemblies. The site is bilingual (es/en). Content lives in Git and is edited only via Pull Requests, with no CMS; contributors follow `CONTRIBUTING.md`.
+Static site for FEYT (Federación de Estudiantes Yachay Tech) that tracks student issues as a navigable tree of any depth (e.g. Residencias → Internet → Bloque B). Each issue shows its status, a timeline of updates, documents, and linked assemblies and events. Assemblies and events/activities also have their own sections outside the tree. The site is bilingual (es/en). Content lives in Git and is edited only via Pull Requests, with no CMS; contributors follow `CONTRIBUTING.md`.
 
 ## Conventions
 
@@ -55,12 +55,15 @@ Folder structure **is** the topic tree. A topic's **key** is its folder path und
 
 Treat keys as stable. Renaming a folder requires an entry in `public/_redirects`.
 
-Six collections, all loaded with `glob` and a custom `generateId`:
+Eight collections, all loaded with `glob` and a custom `generateId`:
 
 - `topics`: `**/topic.yaml`, holding language-neutral data (`status`, `priority`, `order`, documents, links). Nodes without `status` are grouping areas.
 - `topicTexts`: `**/{es,en}.md`, holding title, summary and body per locale. The id is `<key>/<locale>`.
 - `updates` / `updatesEn`: `**/updates/*.es.md` and `*.en.md`. The id is `<key>/updates/<slug>`, and the English entry shares the id of its Spanish one. `updates` is a reserved folder name.
 - `assemblies` / `assembliesEn`: `src/content/assemblies/*.{es,en}.md`. `topics: reference('topics')[]` links an assembly to topic keys.
+- `events` / `eventsEn`: `src/content/events/*.{es,en}.md`, events and activities outside the tree, with `category`, optional `endDate` and `registrationUrl`, and optional `topics` references. The TS type is `CampusEvent`, which avoids shadowing the DOM `Event`.
+
+Assemblies and events share `SCHEDULE_STATUSES` (scheduled/held/cancelled) and `FORMATS`, but have separate UI labels, because Spanish grammatical gender differs ("Convocada" vs "Programado"). Use `upcoming()` / `past()` from `content.ts` to split them, and `ScheduleList.astro` to render them.
 
 Rule: **data is written once**, in `topic.yaml` or in the `.es.md` file, and `en` files only translate text. Spanish is required. English is optional and falls back to Spanish with a notice (`pickLocale`).
 
@@ -71,6 +74,7 @@ Rule: **data is written once**, in `topic.yaml` or in the `.es.md` file, and `en
   - every topic has `es.md`;
   - every parent folder has a `topic.yaml`;
   - no orphan translations;
+  - no event ending before it starts;
   - referenced `/docs/...` files exist in `public/`;
   - the `status` in `topic.yaml` equals the `status` of the latest update that set one.
 - `content.ts`: the only module that calls `getCollection`. It runs `validateContent` and **throws, failing `astro build`**, when content is inconsistent. It then builds the tree and exposes helpers (`getTopic`, `getAncestors`, `topicPaths`, `pickLocale`…). It memoizes in build and reloads on every call in dev.

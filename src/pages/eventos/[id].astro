@@ -1,0 +1,10 @@
+---
+import EventPage from '../../views/EventPage.astro';
+import { eventPaths } from '../../lib/content';
+
+export const getStaticPaths = eventPaths;
+
+const { id } = Astro.params;
+---
+
+<EventPage id={id!} locale="es" />

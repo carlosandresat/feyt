@@ -1,0 +1,109 @@
+---
+// Date-led list shared by assemblies and events: the date is the main piece of information.
+import type { Locale } from '../lib/domain';
+import { dateParts } from '../lib/i18n';
+
+export interface ScheduleItem {
+  href: string;
+  title: string;
+  summary: string;
+  date: Date;
+  statusLabel: string;
+  /** Optional secondary label, e.g. an event's category. */
+  tag?: string;
+  cancelled?: boolean;
+}
+
+interface Props {
+  items: ScheduleItem[];
+  locale: Locale;
+}
+const { items, locale } = Astro.props;
+---
+
+<ol class="schedule">
+  {items.map((item) => {
+    const parts = dateParts(item.date, locale);
+    return (
+      <li class:list={{ cancelled: item.cancelled }}>
+        <time class="date" datetime={item.date.toISOString()}>
+          <span class="day">{parts.day}</span>
+          <span class="month">{parts.month}</span>
+          <span class="time">{parts.time}</span>
+        </time>
+        <div class="body">
+          <h3>
+            <a href={item.href}>{item.title}</a>
+          </h3>
+          <p class="summary">{item.summary}</p>
+          <p class="labels">
+            <span>{item.statusLabel}</span>
+            {item.tag && <span>{item.tag}</span>}
+          </p>
+        </div>
+      </li>
+    );
+  })}
+</ol>
+
+<style>
+  .schedule {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1.25rem;
+  }
+  li {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .date {
+    display: grid;
+    justify-items: center;
+    padding: 0.5rem 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    line-height: 1.1;
+  }
+  .day {
+    font-family: var(--font-display-stack);
+    font-size: var(--step-2);
+    font-weight: 600;
+  }
+  .month {
+    color: var(--brand);
+    font-weight: 600;
+  }
+  .time {
+    margin-top: 0.3rem;
+    white-space: nowrap;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  h3 {
+    font-size: var(--step-0);
+  }
+  .summary {
+    margin: 0 0 0.4rem;
+  }
+  .labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+  }
+  .labels span {
+    padding: 0.05rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  .cancelled h3 a {
+    text-decoration: line-through;
+  }
+</style>

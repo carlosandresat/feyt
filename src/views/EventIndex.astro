@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+import ScheduleList, { type ScheduleItem } from '../components/ScheduleList.astro';
+import type { Locale } from '../lib/domain';
+import { eventPath, t } from '../lib/i18n';
+import { loadContent, past, pickLocale, upcoming, type CampusEvent } from '../lib/content';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const _ = t(locale);
+const { events } = await loadContent();
+
+const toItem = (e: CampusEvent): ScheduleItem => {
+  const { data } = pickLocale(e.es, e.en, locale).entry;
+  return {
+    href: eventPath(locale, e.id),
+    title: data.title,
+    summary: data.summary,
+    date: e.date,
+    statusLabel: _(`eventStatus.${e.es.data.status}`),
+    tag: _(`eventCategory.${e.es.data.category}`),
+    cancelled: e.es.data.status === 'cancelled',
+  };
+};
+const groups = [
+  { heading: _('events.upcoming'), items: upcoming(events).map(toItem) },
+  { heading: _('events.past'), items: past(events).map(toItem) },
+].filter((g) => g.items.length > 0);
+---
+
+<Base locale={locale} title={_('events.title')}>
+  <h1>{_('events.title')}</h1>
+  <p>{_('events.intro')}</p>
+  {groups.length === 0 && <p class="muted">{_('events.empty')}</p>}
+  {groups.map((group) => (
+    <section>
+      <h2>{group.heading}</h2>
+      <ScheduleList items={group.items} locale={locale} />
+    </section>
+  ))}
+</Base>
