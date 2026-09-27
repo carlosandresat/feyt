@@ -9,34 +9,31 @@ interface Props {
 const { status, locale } = Astro.props;
 ---
 
-<span class="badge" data-status={status}>
+<span class="badge" style={`--status: var(--status-${status})`}>
+  <span class="dot" aria-hidden="true"></span>
   {t(locale)(`status.${status}`)}
 </span>
 
 <style>
   .badge {
-    display: inline-block;
-    padding: 0.1rem 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.15rem 0.6rem 0.15rem 0.45rem;
     border-radius: 999px;
-    font-size: 0.8rem;
+    font-size: var(--step--1);
     font-weight: 600;
+    line-height: 1.4;
     white-space: nowrap;
-    background: var(--color, #888);
-    color: #fff;
+    color: var(--status);
+    background: color-mix(in srgb, var(--status) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--status) 35%, transparent);
   }
-  [data-status='reported'] {
-    --color: #8a5a00;
-  }
-  [data-status='in-progress'] {
-    --color: #0b5cad;
-  }
-  [data-status='awaiting-response'] {
-    --color: #6b3fa0;
-  }
-  [data-status='stalled'] {
-    --color: #b3261e;
-  }
-  [data-status='resolved'] {
-    --color: #1e7a3c;
+  .dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--status);
+    box-shadow: 0 0 0.5rem light-dark(transparent, var(--status));
   }
 </style>

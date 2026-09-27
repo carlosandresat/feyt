@@ -1,0 +1,153 @@
+/*
+ * Design tokens — "bioluminescent neuron".
+ * Dark ("abyss"): brand blues glowing on deep water. Light ("slide"): the same neuron as stained ink
+ * on a microscope slide. Every color token uses light-dark(), resolved from `color-scheme`, which
+ * follows the OS by default and is forced by [data-theme] when the visitor picks a theme.
+ * Brand blues come from the FEYT logo: #79AEC3, #3383AA, #195D78.
+ */
+:root {
+  color-scheme: light dark;
+
+  --bg: light-dark(#eef5f8, #051b24);
+  --surface: light-dark(#ffffff, #0a2a38);
+  --surface-2: light-dark(#e2eef3, #0e3446);
+  --text: light-dark(#0d3242, #e2f0f5);
+  --muted: light-dark(#4a6b79, #93b4c2);
+  --border: light-dark(#c9dde6, #184457);
+  --brand: light-dark(#195d78, #79aec3);
+  --brand-mid: #3383aa;
+  --accent: light-dark(#1f6f93, #a8ddee);
+  /* Glow only exists in the dark theme; in light it resolves to transparent. */
+  --glow: light-dark(transparent, #a8ddee);
+  --branch: light-dark(#3383aa, #79aec3);
+
+  --status-reported: light-dark(#8f5b00, #f2b84b);
+  --status-in-progress: light-dark(#0a6f93, #5cc8e8);
+  --status-awaiting-response: light-dark(#6446c4, #a48cf0);
+  --status-stalled: light-dark(#b8352a, #f0786a);
+  --status-resolved: light-dark(#15704a, #5fd39a);
+
+  --font-display-stack: var(--font-display), sans-serif;
+  --font-body-stack: var(--font-body), sans-serif;
+
+  /* Type scale (1.25, minor third-ish steps) */
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.3rem;
+  --step-2: 1.6rem;
+  --step-3: clamp(1.9rem, 1.4rem + 2vw, 2.6rem);
+  --step-4: clamp(2.2rem, 1.5rem + 3.2vw, 3.6rem);
+
+  --radius-s: 6px;
+  --radius-m: 14px;
+  --measure: 68ch;
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body-stack);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display-stack);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+h1 {
+  font-size: var(--step-3);
+  margin: 0 0 0.75rem;
+}
+h2 {
+  font-size: var(--step-1);
+  margin: 2.5rem 0 1rem;
+}
+h3 {
+  font-size: var(--step-0);
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+}
+p {
+  margin: 0 0 1rem;
+  max-width: var(--measure);
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+a:hover {
+  text-decoration-thickness: 2px;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+blockquote {
+  margin: 1rem 0;
+  padding: 0.6rem 1rem;
+  border-left: 3px solid var(--status-reported);
+  background: var(--surface);
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  max-width: var(--measure);
+}
+blockquote p {
+  margin: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.page {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 2rem var(--gutter) 5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
