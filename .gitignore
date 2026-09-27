@@ -22,3 +22,8 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# locally installed third-party agent skills (install them at user level: ~/.claude/skills/)
+.agents/
+.claude/skills/
+skills-lock.json
