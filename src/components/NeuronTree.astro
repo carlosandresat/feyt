@@ -222,16 +222,19 @@ const vars = {
       keepPaths(status ? rows.filter((r) => r.dataset.status === status) : null);
     });
 
-    // Other components (the home page's interest picker) light whole branches by dispatching
-    // `neuron:highlight` on this element with the topic keys to keep; an empty list clears it.
-    neuron.addEventListener('neuron:highlight', (event) => {
-      const keys = new Set((event as CustomEvent<string[]>).detail);
+    // Other components (the home page's interest picker) light whole branches by setting
+    // `data-highlight` on this element to space-separated topic keys; removing it clears it.
+    // An attribute instead of an event, so it works whichever script runs first.
+    const highlight = () => {
+      const keys = new Set(neuron.dataset.highlight?.split(' ').filter(Boolean));
       keepPaths(
         keys.size > 0
           ? rows.filter((r) => r.dataset.path!.split(' ').some((k) => keys.has(k)))
           : null,
       );
-    });
+    };
+    new MutationObserver(highlight).observe(neuron, { attributeFilter: ['data-highlight'] });
+    highlight();
   }
 </script>
 

@@ -1,0 +1,555 @@
+---
+// "Tu frente": the visitor marks what affects them (areas, assemblies, volunteering) and gets the
+// matching issues and upcoming activities, while the chosen branches light up in the neuron.
+// Everything is rendered at build time and hidden; the script only toggles `hidden`, so there is no
+// client framework. The selection lives in the URL (?frente=…, shareable) and in localStorage.
+import type { Locale, Status } from '../lib/domain';
+import { dateParts, t } from '../lib/i18n';
+
+export interface InterestOption {
+  token: string;
+  /** Small label above the phrase, e.g. the area's title. */
+  group: string;
+  label: string;
+  /** e.g. "3 problemáticas" or "Sin fechas por ahora". */
+  meta: string;
+  /** For areas: the topic key whose branch lights up in the neuron. */
+  topicKey?: string;
+}
+
+export interface KitIssue {
+  interests: string[];
+  title: string;
+  href: string;
+  status: Status;
+}
+
+export interface KitActivity {
+  interests: string[];
+  title: string;
+  href: string;
+  date: Date;
+  place: string;
+  registrationUrl?: string;
+}
+
+interface Props {
+  locale: Locale;
+  /** `id` of the NeuronTree to highlight. */
+  neuron: string;
+  options: InterestOption[];
+  issues: KitIssue[];
+  activities: KitActivity[];
+}
+const { locale, neuron, options, issues, activities } = Astro.props;
+const _ = t(locale);
+---
+
+<section
+  id="frente"
+  class="picker"
+  aria-labelledby="frente-title"
+  data-interest-picker
+  data-neuron={neuron}
+  data-issues-one={_('count.issues.one')}
+  data-issues-other={_('count.issues.other')}
+  data-activities-one={_('count.activities.one')}
+  data-activities-other={_('count.activities.other')}
+  data-summary={_('home.kit.summary')}
+  data-copied={_('home.kit.copied')}
+>
+  <h2 id="frente-title">{_('home.picker.title')}</h2>
+  <p class="hint">{_('home.picker.hint')}</p>
+
+  <div class="tiles" role="group" aria-labelledby="frente-title" data-tiles>
+    {options.map((o) => (
+      <button
+        type="button"
+        class="tile"
+        aria-pressed="false"
+        data-interest={o.token}
+        data-topic={o.topicKey}
+      >
+        <span class="group">{o.group}</span>
+        <svg class="check" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M7.5 12.5l3 3 6-6.5" />
+        </svg>
+        <span class="label">{o.label}</span>
+        <span class="meta">{o.meta}</span>
+      </button>
+    ))}
+  </div>
+
+  <div class="kit" id="tu-frente" data-kit>
+    <h3>{_('home.kit.title')}</h3>
+    <p class="summary" role="status" data-kit-summary></p>
+    <p class="empty" data-kit-empty>
+      {_('home.kit.empty')}
+    </p>
+
+    <div data-kit-body hidden>
+      <section data-kit-issues>
+        <h4>{_('home.kit.issues')}</h4>
+        <ul class="issues">
+          {issues.map((i) => (
+            <li data-interests={i.interests.join(' ')} data-kind="issue" hidden>
+              <a href={i.href}>{i.title}</a>
+              <span class="status" style={`--status: var(--status-${i.status})`}>
+                {_(`status.${i.status}`)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <h4>{_('home.kit.activities')}</h4>
+        <ul class="activities">
+          {activities.map((a) => {
+            const parts = dateParts(a.date, locale);
+            return (
+              <li data-interests={a.interests.join(' ')} data-kind="activity" hidden>
+                <time class="date" datetime={a.date.toISOString()}>
+                  <span class="day">{parts.day}</span>
+                  <span class="month">{parts.month}</span>
+                </time>
+                <div class="body">
+                  <a href={a.href}>{a.title}</a>
+                  <span class="place">
+                    {parts.time}, {a.place}
+                  </span>
+                </div>
+                {a.registrationUrl && (
+                  <a class="cta" href={a.registrationUrl}>
+                    {_('event.register')}
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <p class="none" data-kit-no-activities>
+          {_('home.kit.noActivities')}
+        </p>
+      </section>
+
+      <p class="share">
+        <button type="button" data-kit-share>
+          {_('home.kit.share')}
+        </button>
+        <span role="status" data-kit-status></span>
+      </p>
+    </div>
+  </div>
+
+  <a class="jump" href="#tu-frente" data-kit-jump hidden>
+    {_('home.kit.jump')}
+    <span class="count" data-kit-count></span>
+  </a>
+</section>
+
+<script>
+  import { INTERESTS_PARAM, parseInterests, serializeInterests } from '../lib/interests';
+
+  const STORAGE_KEY = 'interests';
+
+  for (const picker of document.querySelectorAll<HTMLElement>('[data-interest-picker]')) {
+    const one = <T extends HTMLElement>(selector: string) => picker.querySelector<T>(selector)!;
+    const tiles = [...picker.querySelectorAll<HTMLButtonElement>('[data-interest]')];
+    const items = [...picker.querySelectorAll<HTMLElement>('[data-interests]')];
+    const known = tiles.map((tile) => tile.dataset.interest!);
+    const neuron = document.querySelector<HTMLElement>(`[data-neuron="${picker.dataset.neuron}"]`);
+    const kit = one('[data-kit]');
+    const jump = one('[data-kit-jump]');
+    const status = one('[data-kit-status]');
+    const plural = new Intl.PluralRules(document.documentElement.lang);
+    const count = (n: number, kind: 'issues' | 'activities') => {
+      const form = plural.select(n) === 'one' ? 'One' : 'Other';
+      return picker.dataset[`${kind}${form}`]!.replace('{n}', String(n));
+    };
+
+    // A shared link wins over what this visitor picked last time.
+    const initial = () => {
+      const fromUrl = new URLSearchParams(location.search).get(INTERESTS_PARAM);
+      if (fromUrl !== null) return parseInterests(fromUrl, known);
+      try {
+        return parseInterests(localStorage.getItem(STORAGE_KEY), known);
+      } catch {
+        return [];
+      }
+    };
+    const selected = new Set(initial());
+
+    let tilesVisible = false;
+    let kitVisible = false;
+    // Mobile only (CSS hides it on wide screens): a shortcut to the results while they're below.
+    const updateJump = () => {
+      jump.hidden = selected.size === 0 || !tilesVisible || kitVisible;
+    };
+
+    const render = () => {
+      for (const tile of tiles) {
+        tile.setAttribute('aria-pressed', String(selected.has(tile.dataset.interest!)));
+      }
+      let issues = 0;
+      let activities = 0;
+      for (const item of items) {
+        const shown = item.dataset.interests!.split(' ').some((i) => selected.has(i));
+        item.hidden = !shown;
+        if (shown && item.dataset.kind === 'issue') issues++;
+        if (shown && item.dataset.kind === 'activity') activities++;
+      }
+      const any = selected.size > 0;
+      one('[data-kit-empty]').hidden = any;
+      one('[data-kit-body]').hidden = !any;
+      one('[data-kit-issues]').hidden = issues === 0;
+      one('[data-kit-no-activities]').hidden = activities > 0;
+      one('[data-kit-summary]').textContent = any
+        ? picker.dataset
+            .summary!.replace('{issues}', count(issues, 'issues'))
+            .replace('{activities}', count(activities, 'activities'))
+        : '';
+      one('[data-kit-count]').textContent = String(issues + activities);
+      status.textContent = '';
+
+      const branches = tiles.filter((t) => t.dataset.topic && selected.has(t.dataset.interest!));
+      if (branches.length > 0) {
+        neuron?.setAttribute('data-highlight', branches.map((t) => t.dataset.topic).join(' '));
+      } else {
+        neuron?.removeAttribute('data-highlight');
+      }
+      updateJump();
+    };
+
+    const save = () => {
+      const value = serializeInterests(selected, known);
+      const url = new URL(location.href);
+      if (value) url.searchParams.set(INTERESTS_PARAM, value);
+      else url.searchParams.delete(INTERESTS_PARAM);
+      history.replaceState(history.state, '', url);
+      try {
+        localStorage.setItem(STORAGE_KEY, value);
+      } catch {}
+    };
+
+    picker.addEventListener('click', (event) => {
+      const tile = (event.target as Element).closest<HTMLButtonElement>('[data-interest]');
+      if (!tile) return;
+      const token = tile.dataset.interest!;
+      if (!selected.delete(token)) selected.add(token);
+      save();
+      render();
+    });
+
+    one('[data-kit-share]').addEventListener('click', async () => {
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: document.title, url: location.href });
+        } else {
+          await navigator.clipboard.writeText(location.href);
+          status.textContent = picker.dataset.copied!;
+        }
+      } catch {
+        // The visitor closed the share sheet, or the clipboard isn't available.
+      }
+    });
+
+    const visibility = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === kit) kitVisible = entry.isIntersecting;
+        else tilesVisible = entry.isIntersecting;
+      }
+      updateJump();
+    });
+    visibility.observe(kit);
+    visibility.observe(one('[data-tiles]'));
+
+    render();
+  }
+</script>
+
+<style>
+  .picker [hidden] {
+    display: none !important;
+  }
+  h2 {
+    margin: 0 0 0.35rem;
+    font-size: var(--step-2);
+    font-weight: 600;
+  }
+  .hint {
+    margin: 0 0 1rem;
+    color: var(--muted);
+  }
+
+  /* --- tiles: toggle buttons, two per row --- */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+  .tile {
+    display: grid;
+    grid-template:
+      'group group' auto
+      'label label' 1fr
+      'meta check' auto / minmax(0, 1fr) auto;
+    gap: 0.3rem 0.5rem;
+    min-height: 7rem;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      border-color 0.2s,
+      box-shadow 0.2s,
+      transform 0.12s;
+  }
+  .tile:hover {
+    border-color: var(--branch);
+  }
+  .tile:active {
+    transform: scale(0.97);
+  }
+  .tile[aria-pressed='true'] {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: var(--bg);
+    box-shadow: 0 0 1.5rem color-mix(in srgb, var(--glow) 40%, transparent);
+  }
+  .group {
+    grid-area: group;
+    font-family: var(--font-display-stack);
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0.8;
+    /* Last resort for very long single words in a narrow tile. */
+    overflow-wrap: break-word;
+  }
+  .check {
+    grid-area: check;
+    align-self: end;
+    width: 1.4rem;
+    height: 1.4rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .check path {
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  [aria-pressed='true'] .check path {
+    opacity: 1;
+  }
+  .label {
+    grid-area: label;
+    align-self: end;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+  .meta {
+    grid-area: meta;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  [aria-pressed='true'] .meta {
+    color: inherit;
+    opacity: 0.85;
+  }
+
+  /* --- results --- */
+  .kit {
+    margin-top: 1.25rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    scroll-margin-top: 1rem;
+  }
+  h3 {
+    margin: 0;
+    font-size: var(--step-1);
+    font-weight: 600;
+  }
+  .summary {
+    margin: 0.2rem 0 0;
+    color: var(--muted);
+  }
+  .summary:empty {
+    display: none;
+  }
+  .empty {
+    margin: 0.5rem 0 0;
+    color: var(--muted);
+  }
+  h4 {
+    margin: 1.25rem 0 0.55rem;
+    font-size: var(--step-0);
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .issues li,
+  .activities li {
+    border-radius: var(--radius-s);
+    background: var(--surface-2);
+  }
+  .issues li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    padding: 0.7rem 0.85rem;
+  }
+  li a {
+    color: var(--text);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--status);
+    white-space: nowrap;
+  }
+  .status::before {
+    content: '';
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--status);
+    box-shadow: 0 0 0.5rem light-dark(transparent, var(--status));
+  }
+  .activities li {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+  }
+  .date {
+    display: grid;
+    justify-items: center;
+    line-height: 1.1;
+  }
+  .day {
+    font-family: var(--font-display-stack);
+    font-size: var(--step-1);
+    font-weight: 600;
+  }
+  .month,
+  .place {
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  .body {
+    display: grid;
+    min-width: 0;
+  }
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 0.95rem;
+    border-radius: 999px;
+    background: var(--brand);
+    color: var(--bg);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .cta:hover {
+    background: var(--accent);
+  }
+  .none {
+    margin: 0;
+    color: var(--muted);
+  }
+  .share {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0;
+  }
+  .share button {
+    min-height: 2.75rem;
+    padding: 0 1.2rem;
+    border: 1px solid var(--branch);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .share button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  [data-kit-status] {
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  /* --- mobile shortcut to the results --- */
+  .jump {
+    position: fixed;
+    z-index: 10;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 3.5rem;
+    padding: 0 0.55rem 0 1.2rem;
+    border-radius: 1.1rem;
+    background: var(--brand);
+    color: var(--bg);
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow:
+      0 0.6rem 1.8rem rgb(0 0 0 / 0.3),
+      0 0 1.6rem color-mix(in srgb, var(--glow) 35%, transparent);
+    animation: rise 0.25s ease-out;
+  }
+  .count {
+    display: grid;
+    place-items: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0 0.5rem;
+    box-sizing: border-box;
+    border-radius: 0.75rem;
+    background: var(--bg);
+    color: var(--brand);
+    font-family: var(--font-display-stack);
+  }
+  @keyframes rise {
+    from {
+      transform: translateY(150%);
+    }
+  }
+  @media (min-width: 62rem) {
+    .jump {
+      display: none !important;
+    }
+  }
+</style>

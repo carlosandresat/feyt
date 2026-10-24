@@ -1,15 +1,28 @@
 ---
 import Base from '../layouts/Base.astro';
+import InterestPicker, {
+  type InterestOption,
+  type KitActivity,
+  type KitIssue,
+} from '../components/InterestPicker.astro';
 import NeuronTree from '../components/NeuronTree.astro';
 import ScheduleList from '../components/ScheduleList.astro';
 import { STATUSES, type Locale } from '../lib/domain';
+import type { UIKey } from '../i18n/ui';
 import { assemblyPath, eventPath, formatDate, localizedPath, topicPath, t } from '../lib/i18n';
+import {
+  activityInterests,
+  areaOf,
+  ASSEMBLIES_INTEREST,
+  VOLUNTEERING_INTEREST,
+} from '../lib/interests';
 import { descendants } from '../lib/tree';
 import {
   getRecentUpdates,
   getTopic,
   loadContent,
   pickLocale,
+  topicText,
   topicTitle,
   upcoming,
 } from '../lib/content';
@@ -27,14 +40,70 @@ const legend = STATUSES.map((status) => ({
   count: issues.filter((i) => i.status === status).length,
 }));
 const plural = new Intl.PluralRules(locale);
-const somaCaption = _(
-  plural.select(issues.length) === 'one' ? 'count.issues.one' : 'count.issues.other',
-).replace('{n}', String(issues.length));
+const count = (n: number, one: UIKey, other: UIKey) =>
+  _(plural.select(n) === 'one' ? one : other).replace('{n}', String(n));
+const somaCaption = count(issues.length, 'count.issues.one', 'count.issues.other');
+
+// "Tu frente": one option per area, plus the two ways to take part outside the tree.
+const scheduledAssemblies = upcoming(assemblies);
+const scheduledEvents = upcoming(events);
+const upcomingLabel = (n: number) =>
+  n === 0 ? _('interest.noDates') : count(n, 'count.upcoming.one', 'count.upcoming.other');
+const interestOptions: InterestOption[] = [
+  ...tree.map((area) => {
+    const { title, interest } = topicText(area, locale).entry.data;
+    const n = [area, ...descendants(area)].filter((d) => d.status).length;
+    return {
+      token: area.key,
+      topicKey: area.key,
+      group: title,
+      label: interest ?? title,
+      meta: count(n, 'count.issues.one', 'count.issues.other'),
+    };
+  }),
+  {
+    token: ASSEMBLIES_INTEREST,
+    group: _('interest.group.participation'),
+    label: _('interest.assemblies'),
+    meta: upcomingLabel(scheduledAssemblies.length),
+  },
+  {
+    token: VOLUNTEERING_INTEREST,
+    group: _('interest.group.activities'),
+    label: _('interest.volunteering'),
+    meta: upcomingLabel(
+      scheduledEvents.filter((e) => e.es.data.category === 'volunteering').length,
+    ),
+  },
+];
+const kitIssues: KitIssue[] = issues.map((topic) => ({
+  interests: [areaOf(topic.key)],
+  title: topicTitle(topic, locale),
+  href: topicPath(locale, topic.key),
+  status: topic.status!,
+}));
+const kitActivities: KitActivity[] = [
+  ...scheduledAssemblies.map((a) => ({
+    interests: activityInterests('assembly', a.topicKeys),
+    title: pickLocale(a.es, a.en, locale).entry.data.title,
+    href: assemblyPath(locale, a.id),
+    date: a.date,
+    place: a.es.data.place,
+  })),
+  ...scheduledEvents.map((e) => ({
+    interests: activityInterests(e.es.data.category, e.topicKeys),
+    title: pickLocale(e.es, e.en, locale).entry.data.title,
+    href: eventPath(locale, e.id),
+    date: e.date,
+    place: e.es.data.place,
+    registrationUrl: e.es.data.registrationUrl,
+  })),
+].sort((a, b) => a.date.getTime() - b.date.getTime());
 
 const recent = await Promise.all(
   (await getRecentUpdates(5)).map(async (u) => ({ update: u, topic: await getTopic(u.key) })),
 );
-const nextAssemblies = upcoming(assemblies).map((a) => {
+const nextAssemblies = scheduledAssemblies.map((a) => {
   const { data } = pickLocale(a.es, a.en, locale).entry;
   return {
     href: assemblyPath(locale, a.id),
@@ -44,19 +113,17 @@ const nextAssemblies = upcoming(assemblies).map((a) => {
     statusLabel: _(`assemblyStatus.${a.es.data.status}`),
   };
 });
-const nextEvents = upcoming(events)
-  .slice(0, 3)
-  .map((e) => {
-    const { data } = pickLocale(e.es, e.en, locale).entry;
-    return {
-      href: eventPath(locale, e.id),
-      title: data.title,
-      summary: data.summary,
-      date: e.date,
-      statusLabel: _(`eventStatus.${e.es.data.status}`),
-      tag: _(`eventCategory.${e.es.data.category}`),
-    };
-  });
+const nextEvents = scheduledEvents.slice(0, 3).map((e) => {
+  const { data } = pickLocale(e.es, e.en, locale).entry;
+  return {
+    href: eventPath(locale, e.id),
+    title: data.title,
+    summary: data.summary,
+    date: e.date,
+    statusLabel: _(`eventStatus.${e.es.data.status}`),
+    tag: _(`eventCategory.${e.es.data.category}`),
+  };
+});
 ---
 
 <Base locale={locale} wide>
@@ -64,17 +131,24 @@ const nextEvents = upcoming(events)
     <div class="text">
       <h1>{_('home.title')}</h1>
       <p class="lead">{_('home.intro')}</p>
+      <p class="actions">
+        <a class="primary" href="#frente">
+          {_('home.pickerCta')}
+        </a>
+        <a href={localizedPath(locale, '/buscar/')}>{_('home.searchCta')}</a>
+        <a href={localizedPath(locale, '/temas/')}>{_('home.topicsCta')}</a>
+      </p>
     </div>
-    <ul class="legend" aria-label={_('home.legend')}>
-      {legend.map(({ status, count }) => (
-        <li style={`--status: var(--status-${status})`}>
-          <span class="dot" aria-hidden="true" />
-          {_(`status.${status}`)}
-          <span class="count">{count}</span>
-        </li>
-      ))}
-    </ul>
     <div class="map">
+      <ul class="legend" aria-label={_('home.legend')}>
+        {legend.map(({ status, count }) => (
+          <li style={`--status: var(--status-${status})`}>
+            <span class="dot" aria-hidden="true" />
+            {_(`status.${status}`)}
+            <span class="count">{count}</span>
+          </li>
+        ))}
+      </ul>
       <NeuronTree
         id="home"
         locale={locale}
@@ -84,12 +158,15 @@ const nextEvents = upcoming(events)
         animate
       />
     </div>
-    <p class="actions">
-      <a class="primary" href={localizedPath(locale, '/buscar/')}>
-        {_('home.searchCta')}
-      </a>
-      <a href={localizedPath(locale, '/temas/')}>{_('home.topicsCta')}</a>
-    </p>
+    <div class="picker">
+      <InterestPicker
+        locale={locale}
+        neuron="home"
+        options={interestOptions}
+        issues={kitIssues}
+        activities={kitActivities}
+      />
+    </div>
   </section>
 
   <div class="below">
@@ -121,8 +198,9 @@ const nextEvents = upcoming(events)
 </Base>
 
 <style>
-  /* Mobile: headline, legend, tree, actions (the tree must be on the first screen).
-     Desktop: text, legend and actions on the left; the tree fills the right column. */
+  /* Mobile: headline, legend + tree (on the first screen), then the interest picker.
+     Desktop: text and picker on the left, so the branches you pick light up in the tree on the
+     right while you choose. */
   .hero {
     display: grid;
     gap: 1.5rem;
@@ -133,12 +211,11 @@ const nextEvents = upcoming(events)
   @media (min-width: 62rem) {
     .hero {
       grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-      grid-template-rows: auto auto 1fr;
+      grid-template-rows: auto 1fr;
       grid-template-areas:
         'text map'
-        'actions map'
-        'legend map';
-      column-gap: 3rem;
+        'picker map';
+      gap: 2.5rem 3rem;
       align-items: start;
     }
     .text {
@@ -147,17 +224,12 @@ const nextEvents = upcoming(events)
     .map {
       grid-area: map;
     }
-    .actions {
-      grid-area: actions;
+    .picker {
+      grid-area: picker;
     }
-    .legend {
-      grid-area: legend;
-      flex-direction: column;
-      max-width: 18rem;
-    }
-    .legend li {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
+    /* The picker is right below the text here; the shortcut is only useful on mobile. */
+    .actions .primary {
+      display: none;
     }
   }
   h1 {
@@ -177,7 +249,7 @@ const nextEvents = upcoming(events)
     flex-wrap: wrap;
     align-items: center;
     gap: 1.25rem;
-    margin: 0;
+    margin: 1.25rem 0 0;
   }
   .primary {
     padding: 0.7rem 1.3rem;
@@ -193,7 +265,7 @@ const nextEvents = upcoming(events)
   }
   .legend {
     list-style: none;
-    margin: 0;
+    margin: 0 0 1rem;
     padding: 0;
     display: flex;
     flex-wrap: wrap;
