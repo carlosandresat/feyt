@@ -3,6 +3,7 @@
 // collections.
 
 import type { Status } from './domain';
+import { RESERVED_INTERESTS } from './interests';
 
 /** 'residencias/internet/bloque-b' → 'residencias/internet'; a root node → null. */
 export function parentKey(key: string): string | null {
@@ -100,6 +101,9 @@ export function validateContent(input: ValidationInput): string[] {
   for (const topic of input.topics) {
     if (topic.key.split('/').includes(UPDATES_DIR)) {
       errors.push(`"${topic.key}": "${UPDATES_DIR}" is a reserved name and can't be a topic.`);
+    }
+    if (parentKey(topic.key) === null && RESERVED_INTERESTS.includes(topic.key as never)) {
+      errors.push(`"${topic.key}": reserved by the home page's interest picker; rename the area.`);
     }
     if (!texts.has(`${topic.key}/es`)) {
       errors.push(`"${topic.key}": missing es.md (Spanish is required).`);

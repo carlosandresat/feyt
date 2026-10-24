@@ -75,6 +75,11 @@ const topicTexts = defineCollection({
   schema: z.object({
     title: z.string(),
     summary: z.string(),
+    /**
+     * Optional, areas only: a first-person phrase for the home page's interest picker
+     * (e.g. "Vivo en las residencias"). Falls back to the title.
+     */
+    interest: z.string().optional(),
   }),
 });
 

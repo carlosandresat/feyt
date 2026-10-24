@@ -126,4 +126,11 @@ describe('validateContent', () => {
     input.texts.push('res/updates/es');
     expect(validateContent(input).some((m) => m.includes('reserved name'))).toBe(true);
   });
+
+  it('forbids areas named like an interest-picker token, but not subtopics', () => {
+    const input = base();
+    input.topics.push({ key: 'voluntariado', files: [] }, { key: 'res/asambleas', files: [] });
+    input.texts.push('voluntariado/es', 'res/asambleas/es');
+    expect(validateContent(input)).toEqual([expect.stringContaining('"voluntariado": reserved')]);
+  });
 });

@@ -71,6 +71,8 @@ summary: Una frase que explique el problema.
 Full description in Markdown (in Spanish).
 ```
 
+Areas (top-level folders) can add an `interest` line: a first-person phrase shown in the home page's "Tu frente" picker, e.g. `interest: Vivo en las residencias`. Without it, the picker shows the title. The names `asambleas` and `voluntariado` are reserved by the picker and can't be used as area folders.
+
 **`en.md`** (optional): same format, with the translated text.
 
 Rules:
