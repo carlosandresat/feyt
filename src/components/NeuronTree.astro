@@ -187,7 +187,7 @@ const vars = {
 
 <script>
   // Lights the path from the soma to the row under the pointer (or keyboard focus), and applies
-  // the optional status filter. Everything else about the tree is static HTML/SVG.
+  // the optional status filter or an external highlight. Everything else is static HTML/SVG.
   for (const neuron of document.querySelectorAll<HTMLElement>('[data-neuron]')) {
     const shapes = [...neuron.querySelectorAll<SVGElement>('svg [data-key]')];
     const rows = [...neuron.querySelectorAll<HTMLLIElement>('.rows li')];
@@ -207,17 +207,30 @@ const vars = {
     neuron.addEventListener('pointerleave', () => light(null));
     neuron.addEventListener('focusout', () => light(null));
 
-    const select = neuron.querySelector<HTMLSelectElement>('[data-neuron-filter]');
-    select?.addEventListener('change', () => {
-      const status = select.value;
-      // Keep every node on a path from the soma to a matching issue; dim the rest.
-      const keep = new Set(
-        rows.filter((r) => r.dataset.status === status).flatMap((r) => r.dataset.path!.split(' ')),
-      );
-      neuron.toggleAttribute('data-filtered', status !== '');
+    // Keep every node on a path from the soma to a matching row; dim the rest. null clears it.
+    const keepPaths = (matches: HTMLLIElement[] | null) => {
+      const keep = new Set(matches?.flatMap((r) => r.dataset.path!.split(' ')));
+      neuron.toggleAttribute('data-filtered', matches !== null);
       for (const el of [...shapes, ...rows]) {
         el.classList.toggle('kept', keep.has(el.dataset.key!));
       }
+    };
+
+    const select = neuron.querySelector<HTMLSelectElement>('[data-neuron-filter]');
+    select?.addEventListener('change', () => {
+      const status = select.value;
+      keepPaths(status ? rows.filter((r) => r.dataset.status === status) : null);
+    });
+
+    // Other components (the home page's interest picker) light whole branches by dispatching
+    // `neuron:highlight` on this element with the topic keys to keep; an empty list clears it.
+    neuron.addEventListener('neuron:highlight', (event) => {
+      const keys = new Set((event as CustomEvent<string[]>).detail);
+      keepPaths(
+        keys.size > 0
+          ? rows.filter((r) => r.dataset.path!.split(' ').some((k) => keys.has(k)))
+          : null,
+      );
     });
   }
 </script>
@@ -396,6 +409,13 @@ const vars = {
   .neuron[data-filtered]:not([data-lit])
     :is(.branches path, .glow path, .node, .halo, .rows li):not(.kept) {
     opacity: 0.18;
+  }
+  .neuron[data-filtered]:not([data-lit]) .branches path.kept {
+    stroke: var(--accent);
+    opacity: 1;
+  }
+  .neuron[data-filtered]:not([data-lit]) .glow path.kept {
+    opacity: 0.6;
   }
 
   /* --- one-time growth: branches draw from the soma outward, level by level --- */
