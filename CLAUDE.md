@@ -58,7 +58,7 @@ Treat keys as stable. Renaming a folder requires an entry in `public/_redirects`
 Eight collections, all loaded with `glob` and a custom `generateId`:
 
 - `topics`: `**/topic.yaml`, holding language-neutral data (`status`, `priority`, `order`, documents, links). Nodes without `status` are grouping areas.
-- `topicTexts`: `**/{es,en}.md`, holding title, summary and body per locale. The id is `<key>/<locale>`.
+- `topicTexts`: `**/{es,en}.md`, holding title, summary and body per locale. The id is `<key>/<locale>`. Areas may add `interest`, the first-person phrase shown in the home picker.
 - `updates` / `updatesEn`: `**/updates/*.es.md` and `*.en.md`. The id is `<key>/updates/<slug>`, and the English entry shares the id of its Spanish one. `updates` is a reserved folder name.
 - `assemblies` / `assembliesEn`: `src/content/assemblies/*.{es,en}.md`. `topics: reference('topics')[]` links an assembly to topic keys.
 - `events` / `eventsEn`: `src/content/events/*.{es,en}.md`, events and activities outside the tree, with `category`, optional `endDate` and `registrationUrl`, and optional `topics` references. The TS type is `CampusEvent`, which avoids shadowing the DOM `Event`.
@@ -114,6 +114,11 @@ Key components:
   - The filter dims instead of hiding, which keeps the geometry intact.
 - `Breadcrumbs.astro` draws the neuron path. `Timeline.astro` draws the axon, with a synapse per update lit in the status it set.
 - `ScheduleList.astro` is the date-led list for assemblies and events.
+- `InterestPicker.astro` ("Tu frente") sits next to the neuron on the home page:
+  - one toggle per area, plus assemblies and volunteering. Tokens come from `lib/interests.ts` (pure, tested); `asambleas` and `voluntariado` are reserved area names, enforced by `validateContent`;
+  - every matching issue and upcoming activity is rendered at build time and hidden, and the script only toggles `hidden`;
+  - it lights the chosen branches by setting `data-highlight` on the `NeuronTree`, which watches the attribute with a `MutationObserver`;
+  - the selection lives in `?frente=` (shareable) and in `localStorage`.
 - **Pagefind theming** (`Search.astro`): its components reset `color-scheme`, so the `--pf-*` color variables are registered with `@property` as `<color>`. That way `light-dark()` resolves on our container before Pagefind reads them.
 
 ### Search
